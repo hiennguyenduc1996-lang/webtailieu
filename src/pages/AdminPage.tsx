@@ -18,8 +18,9 @@ import {
   DialogTrigger
 } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Category, Document } from '@/src/types';
+import { Category, Document, RegistrationRequest } from '@/src/types';
 import { motion } from 'motion/react';
+import { registrationService } from '@/src/services/registrationService';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -33,6 +34,8 @@ const CATEGORY_LABELS: Record<Category, string> = {
   specialized: 'Đề Trường Chuyên',
   thematic: 'Tài liệu Chuyên đề',
   prediction: 'Đề phát triển và Dự đoán',
+  midterm: 'Giữa Kì',
+  final: 'Học Kì',
   placeholder: 'Mục dự phòng'
 };
 
@@ -47,6 +50,48 @@ export default function AdminPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'az'>('newest');
   const [selectedDocs, setSelectedDocs] = useState<string[]>([]);
+  const [regRequests, setRegRequests] = useState<RegistrationRequest[]>([]);
+  const [isRegLoading, setIsRegLoading] = useState(false);
+
+  useEffect(() => {
+    if (user && profile?.role === 'admin') {
+      fetchRegRequests();
+    }
+  }, [user, profile]);
+
+  const fetchRegRequests = async () => {
+    setIsRegLoading(true);
+    try {
+      const requests = await registrationService.getRequests();
+      setRegRequests(requests);
+    } catch (error) {
+      console.error('Error fetching registration requests:', error);
+    } finally {
+      setIsRegLoading(false);
+    }
+  };
+
+  const handleApproveRequest = async (request: RegistrationRequest) => {
+    try {
+      // In a real app, we would create the user in Firebase Auth here
+      // But for this demo, we'll just update the status
+      await registrationService.updateRequestStatus(request.id, 'approved');
+      toast.success('Đã chấp nhận yêu cầu');
+      fetchRegRequests();
+    } catch (error) {
+      toast.error('Có lỗi xảy ra');
+    }
+  };
+
+  const handleRejectRequest = async (id: string) => {
+    try {
+      await registrationService.updateRequestStatus(id, 'rejected');
+      toast.success('Đã từ chối yêu cầu');
+      fetchRegRequests();
+    } catch (error) {
+      toast.error('Có lỗi xảy ra');
+    }
+  };
 
   // Form state
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -455,6 +500,8 @@ export default function AdminPage() {
                           <option value="specialized">Đề Trường Chuyên</option>
                           <option value="thematic">Tài liệu Chuyên đề</option>
                           <option value="prediction">Đề phát triển và Dự đoán</option>
+                          <option value="midterm">Giữa Kì</option>
+                          <option value="final">Học Kì</option>
                           <option value="placeholder">Mục dự phòng</option>
                         </select>
                       </div>
@@ -486,6 +533,8 @@ export default function AdminPage() {
                           <option value="specialized">Đề Trường Chuyên</option>
                           <option value="thematic">Tài liệu Chuyên đề</option>
                           <option value="prediction">Đề phát triển và Dự đoán</option>
+                          <option value="midterm">Giữa Kì</option>
+                          <option value="final">Học Kì</option>
                         </select>
                       </div>
                       <Button 
@@ -634,85 +683,174 @@ export default function AdminPage() {
 
       <Card className="border-none shadow-xl rounded-3xl overflow-hidden bg-white">
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="text-[10px] text-slate-400 uppercase tracking-widest font-bold bg-slate-50/50 border-b">
-                <tr>
-                  <th className="px-8 py-5 w-10">
-                    <input 
-                      type="checkbox" 
-                      className="rounded border-slate-300 text-amber focus:ring-amber"
-                      checked={filteredAndSortedDocs.length > 0 && selectedDocs.length === filteredAndSortedDocs.length}
-                      onChange={toggleSelectAll}
-                    />
-                  </th>
-                  <th className="px-8 py-5">Tên tài liệu & Tác giả</th>
-                  <th className="px-8 py-5">Danh mục</th>
-                  <th className="px-8 py-5">Ngày tạo</th>
-                  <th className="px-8 py-5 text-right">Hành động</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {docsLoading ? (
-                  <tr>
-                    <td colSpan={5} className="px-8 py-20 text-center">
-                      <Loader2 className="h-8 w-8 animate-spin mx-auto text-amber" />
-                    </td>
-                  </tr>
-                ) : filteredAndSortedDocs.length > 0 ? (
-                  filteredAndSortedDocs.map((doc) => (
-                    <tr key={doc.id} className={`hover:bg-slate-50/50 transition-colors group ${selectedDocs.includes(doc.id) ? 'bg-amber/5' : ''}`}>
-                      <td className="px-8 py-5">
+          <Tabs defaultValue="docs">
+            <div className="px-8 py-4 bg-slate-50/50 border-b">
+              <TabsList className="bg-slate-200/50 p-1 rounded-xl">
+                <TabsTrigger value="docs" className="rounded-lg px-6 font-bold data-[state=active]:bg-white">Tài liệu</TabsTrigger>
+                <TabsTrigger value="requests" className="rounded-lg px-6 font-bold data-[state=active]:bg-white">
+                  Yêu cầu đăng ký {regRequests.filter(r => r.status === 'pending').length > 0 && (
+                    <span className="ml-2 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
+                      {regRequests.filter(r => r.status === 'pending').length}
+                    </span>
+                  )}
+                </TabsTrigger>
+              </TabsList>
+            </div>
+
+            <TabsContent value="docs" className="m-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="text-[10px] text-slate-400 uppercase tracking-widest font-bold bg-slate-50/50 border-b">
+                    <tr>
+                      <th className="px-8 py-5 w-10">
                         <input 
                           type="checkbox" 
                           className="rounded border-slate-300 text-amber focus:ring-amber"
-                          checked={selectedDocs.includes(doc.id)}
-                          onChange={() => toggleSelectDoc(doc.id)}
+                          checked={filteredAndSortedDocs.length > 0 && selectedDocs.length === filteredAndSortedDocs.length}
+                          onChange={toggleSelectAll}
                         />
-                      </td>
-                      <td className="px-8 py-5">
-                        <div className="font-bold text-navy group-hover:text-amber transition-colors line-clamp-1">{doc.title}</div>
-                        {doc.author && (
-                          <div className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
-                            <span className="w-3 h-[1px] bg-slate-200" />
-                            {doc.author}
-                          </div>
-                        )}
-                        <a href={doc.driveLink} target="_blank" rel="noreferrer" className="text-[10px] text-slate-400 hover:text-navy flex items-center gap-1 mt-2 transition-colors">
-                          <ExternalLink className="h-3 w-3" /> drive.google.com/...
-                        </a>
-                      </td>
-                      <td className="px-8 py-5">
-                        <span className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${
-                          doc.category === 'specialized' ? 'bg-purple-50 text-purple-700 border-purple-100' :
-                          doc.category === 'provincial' ? 'bg-blue-50 text-blue-700 border-blue-100' :
-                          'bg-emerald-50 text-emerald-700 border-emerald-100'
-                        }`}>
-                          {CATEGORY_LABELS[doc.category]}
-                        </span>
-                      </td>
-                      <td className="px-8 py-5 text-slate-500 font-medium">{new Date(doc.createdAt).toLocaleDateString('vi-VN')}</td>
-                      <td className="px-8 py-5 text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" className="rounded-lg hover:bg-blue-50 hover:text-blue-600" onClick={() => startEdit(doc)}><Edit className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="icon" className="rounded-lg hover:bg-red-50 hover:text-red-600" onClick={() => handleDelete(doc.id)}><Trash2 className="h-4 w-4" /></Button>
-                        </div>
-                      </td>
+                      </th>
+                      <th className="px-8 py-5">Tên tài liệu & Tác giả</th>
+                      <th className="px-8 py-5">Danh mục</th>
+                      <th className="px-8 py-5">Ngày tạo</th>
+                      <th className="px-8 py-5 text-right">Hành động</th>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={5} className="px-8 py-20 text-center text-muted-foreground">
-                      <div className="flex flex-col items-center gap-2">
-                        <Search className="h-8 w-8 text-slate-200" />
-                        <p>Chưa có tài liệu nào phù hợp.</p>
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {docsLoading ? (
+                      <tr>
+                        <td colSpan={5} className="px-8 py-20 text-center">
+                          <Loader2 className="h-8 w-8 animate-spin mx-auto text-amber" />
+                        </td>
+                      </tr>
+                    ) : filteredAndSortedDocs.length > 0 ? (
+                      filteredAndSortedDocs.map((doc) => (
+                        <tr key={doc.id} className={`hover:bg-slate-50/50 transition-colors group ${selectedDocs.includes(doc.id) ? 'bg-amber/5' : ''}`}>
+                          <td className="px-8 py-5">
+                            <input 
+                              type="checkbox" 
+                              className="rounded border-slate-300 text-amber focus:ring-amber"
+                              checked={selectedDocs.includes(doc.id)}
+                              onChange={() => toggleSelectDoc(doc.id)}
+                            />
+                          </td>
+                          <td className="px-8 py-5">
+                            <div className="font-bold text-navy group-hover:text-amber transition-colors line-clamp-1">{doc.title}</div>
+                            {doc.author && (
+                              <div className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
+                                <span className="w-3 h-[1px] bg-slate-200" />
+                                {doc.author}
+                              </div>
+                            )}
+                            <a href={doc.driveLink} target="_blank" rel="noreferrer" className="text-[10px] text-slate-400 hover:text-navy flex items-center gap-1 mt-2 transition-colors">
+                              <ExternalLink className="h-3 w-3" /> drive.google.com/...
+                            </a>
+                          </td>
+                          <td className="px-8 py-5">
+                            <span className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${
+                              doc.category === 'specialized' ? 'bg-purple-50 text-purple-700 border-purple-100' :
+                              doc.category === 'provincial' ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                              'bg-emerald-50 text-emerald-700 border-emerald-100'
+                            }`}>
+                              {CATEGORY_LABELS[doc.category]}
+                            </span>
+                          </td>
+                          <td className="px-8 py-5 text-slate-500 font-medium">{new Date(doc.createdAt).toLocaleDateString('vi-VN')}</td>
+                          <td className="px-8 py-5 text-right">
+                            <div className="flex justify-end gap-1">
+                              <Button variant="ghost" size="icon" className="rounded-lg hover:bg-blue-50 hover:text-blue-600" onClick={() => startEdit(doc)}><Edit className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="icon" className="rounded-lg hover:bg-red-50 hover:text-red-600" onClick={() => handleDelete(doc.id)}><Trash2 className="h-4 w-4" /></Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={5} className="px-8 py-20 text-center text-muted-foreground">
+                          <div className="flex flex-col items-center gap-2">
+                            <Search className="h-8 w-8 text-slate-200" />
+                            <p>Chưa có tài liệu nào phù hợp.</p>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="requests" className="m-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="text-[10px] text-slate-400 uppercase tracking-widest font-bold bg-slate-50/50 border-b">
+                    <tr>
+                      <th className="px-8 py-5">Họ và Tên</th>
+                      <th className="px-8 py-5">Tên tài khoản / Email</th>
+                      <th className="px-8 py-5">Ngày yêu cầu</th>
+                      <th className="px-8 py-5">Trạng thái</th>
+                      <th className="px-8 py-5 text-right">Hành động</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {isRegLoading ? (
+                      <tr>
+                        <td colSpan={5} className="px-8 py-20 text-center">
+                          <Loader2 className="h-8 w-8 animate-spin mx-auto text-amber" />
+                        </td>
+                      </tr>
+                    ) : regRequests.length > 0 ? (
+                      regRequests.map((req) => (
+                        <tr key={req.id} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="px-8 py-5 font-bold text-navy">{req.fullName}</td>
+                          <td className="px-8 py-5 text-slate-600">
+                            <div>{req.username}</div>
+                            <div className="text-[10px] text-slate-400">{req.email}</div>
+                          </td>
+                          <td className="px-8 py-5 text-slate-500">{new Date(req.createdAt).toLocaleDateString('vi-VN')}</td>
+                          <td className="px-8 py-5">
+                            <span className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${
+                              req.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                              req.status === 'rejected' ? 'bg-red-50 text-red-700 border-red-100' :
+                              'bg-amber-50 text-amber-700 border-amber-100'
+                            }`}>
+                              {req.status === 'approved' ? 'Đã duyệt' : req.status === 'rejected' ? 'Từ chối' : 'Chờ duyệt'}
+                            </span>
+                          </td>
+                          <td className="px-8 py-5 text-right">
+                            {req.status === 'pending' && (
+                              <div className="flex justify-end gap-2">
+                                <Button 
+                                  size="sm" 
+                                  className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-bold text-xs"
+                                  onClick={() => handleApproveRequest(req)}
+                                >
+                                  Duyệt
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  className="border-red-200 text-red-600 hover:bg-red-50 rounded-lg font-bold text-xs"
+                                  onClick={() => handleRejectRequest(req.id)}
+                                >
+                                  Từ chối
+                                </Button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={5} className="px-8 py-20 text-center text-muted-foreground">
+                          <p>Chưa có yêu cầu đăng ký nào.</p>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
     </div>

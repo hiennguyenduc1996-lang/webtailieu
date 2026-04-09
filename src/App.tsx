@@ -3,6 +3,8 @@ import Navbar from '@/src/components/layout/Navbar';
 import Footer from '@/src/components/layout/Footer';
 import HomePage from '@/src/pages/HomePage';
 import AdminPage from '@/src/pages/AdminPage';
+import RegisterPage from '@/src/pages/RegisterPage';
+import DocumentDetailPage from '@/src/pages/DocumentDetailPage';
 import { Toaster } from '@/components/ui/sonner';
 import { ErrorBoundary } from '@/src/components/common/ErrorBoundary';
 
@@ -17,6 +19,8 @@ export default function App() {
               <Route path="/" element={<HomePage />} />
               <Route path="/category/:category" element={<HomePage />} />
               <Route path="/admin" element={<AdminPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+              <Route path="/document/:id" element={<DocumentDetailPage />} />
             </Routes>
           </main>
           <Footer />

@@ -10,7 +10,7 @@
         "author": { "type": "string" },
         "driveLink": { "type": "string" },
         "thumbnailUrl": { "type": "string" },
-        "category": { "type": "string", "enum": ["latest", "provincial", "specialized", "thematic", "prediction", "placeholder"] },
+        "category": { "type": "string", "enum": ["latest", "provincial", "specialized", "thematic", "prediction", "midterm", "final", "placeholder"] },
         "createdAt": { "type": "number" },
         "updatedAt": { "type": "number" },
         "description": { "type": "string" }
@@ -24,9 +24,40 @@
       "properties": {
         "uid": { "type": "string" },
         "email": { "type": "string" },
-        "role": { "type": "string", "enum": ["admin", "user"] }
+        "fullName": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "user"] },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] }
       },
-      "required": ["uid", "email", "role"]
+      "required": ["uid", "email", "role", "status"]
+    },
+    "Comment": {
+      "title": "Comment",
+      "description": "User comment on a document",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "documentId": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "content": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["documentId", "userId", "userName", "content", "createdAt"]
+    },
+    "RegistrationRequest": {
+      "title": "RegistrationRequest",
+      "description": "User registration request for admin approval",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "fullName": { "type": "string" },
+        "username": { "type": "string" },
+        "email": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["fullName", "username", "email", "status", "createdAt"]
     }
   },
   "firestore": {
@@ -37,6 +68,14 @@
     "/users/{userId}": {
       "schema": "UserProfile",
       "description": "Collection of user profiles"
+    },
+    "/comments/{commentId}": {
+      "schema": "Comment",
+      "description": "Collection of comments"
+    },
+    "/registration_requests/{requestId}": {
+      "schema": "RegistrationRequest",
+      "description": "Collection of registration requests"
     }
   }
 }

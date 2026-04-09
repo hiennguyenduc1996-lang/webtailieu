@@ -36,6 +36,11 @@ service cloud.firestore {
          request.auth.token.email == "hiennguyenduc1996@gmail.com");
     }
 
+    function isApprovedUser() {
+      return isAuthenticated() && 
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'approved');
+    }
+
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
@@ -55,7 +60,7 @@ service cloud.firestore {
              data.keys().hasOnly(allowedFields) &&
              data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
              isValidUrl(data.driveLink) &&
-             data.category in ['latest', 'provincial', 'specialized', 'thematic', 'prediction', 'placeholder'] &&
+             data.category in ['latest', 'provincial', 'specialized', 'thematic', 'prediction', 'midterm', 'final', 'placeholder'] &&
              data.createdAt is number &&
              data.updatedAt is number &&
              (!('author' in data) || (data.author is string && data.author.size() <= 100)) &&
@@ -64,10 +69,24 @@ service cloud.firestore {
     }
 
     function isValidUser(data) {
-      return data.keys().hasAll(['uid', 'email', 'role']) &&
+      return data.keys().hasAll(['uid', 'email', 'role', 'status']) &&
              data.uid == request.auth.uid &&
              isValidEmail(data.email) &&
-             data.role in ['admin', 'user'];
+             data.role in ['admin', 'user'] &&
+             data.status in ['pending', 'approved', 'rejected'];
+    }
+
+    function isValidComment(data) {
+      return data.keys().hasAll(['documentId', 'userId', 'userName', 'content', 'createdAt']) &&
+             data.userId == request.auth.uid &&
+             data.content is string && data.content.size() > 0 && data.content.size() <= 2000 &&
+             (!('imageUrl' in data) || isValidUrl(data.imageUrl));
+    }
+
+    function isValidRegistrationRequest(data) {
+      return data.keys().hasAll(['fullName', 'username', 'email', 'status', 'createdAt']) &&
+             isValidEmail(data.email) &&
+             data.status == 'pending';
     }
 
     // Rules
@@ -81,8 +100,20 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
-      allow create, update: if isOwner(userId) && isValidUser(request.resource.data) && (request.resource.data.role == 'user' || isAdmin());
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == 'user' && request.resource.data.status == 'pending';
+      allow update: if isAdmin() || (isOwner(userId) && request.resource.data.role == resource.data.role && request.resource.data.status == resource.data.status);
       allow delete: if isAdmin();
+    }
+
+    match /comments/{commentId} {
+      allow read: if true;
+      allow create: if isApprovedUser() && isValidComment(request.resource.data);
+      allow update, delete: if isAdmin() || (isApprovedUser() && resource.data.userId == request.auth.uid);
+    }
+
+    match /registration_requests/{requestId} {
+      allow read, update, delete: if isAdmin();
+      allow create: if isValidRegistrationRequest(request.resource.data);
     }
   }
 }
