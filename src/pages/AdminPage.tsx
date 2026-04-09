@@ -44,6 +44,7 @@ export default function AdminPage() {
   // Search and Sort state
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'az'>('newest');
+  const [selectedDocs, setSelectedDocs] = useState<string[]>([]);
 
   // Form state
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -72,6 +73,35 @@ export default function AdminPage() {
   const handleLogout = async () => {
     await signOut(auth);
     toast.success('Đã đăng xuất');
+  };
+
+  const [isExtracting, setIsExtracting] = useState(false);
+
+  const handleExtractTitle = async () => {
+    if (!formData.driveLink) {
+      toast.error('Vui lòng nhập link Google Drive');
+      return;
+    }
+    setIsExtracting(true);
+    try {
+      const response = await fetch('/api/extract-title', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: formData.driveLink })
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setFormData({ ...formData, title: data.title });
+        toast.success('Đã lấy tên tài liệu thành công');
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.error || 'Không thể lấy tên tài liệu. Vui lòng kiểm tra lại link.');
+      }
+    } catch (error) {
+      toast.error('Có lỗi xảy ra khi kết nối server');
+    } finally {
+      setIsExtracting(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -105,10 +135,42 @@ export default function AdminPage() {
       try {
         await documentService.deleteDocument(id);
         toast.success('Đã xóa tài liệu');
+        setSelectedDocs(prev => prev.filter(item => item !== id));
       } catch (error) {
         toast.error('Không thể xóa tài liệu');
       }
     }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedDocs.length === 0) return;
+    
+    if (confirm(`Bạn có chắc chắn muốn xóa ${selectedDocs.length} tài liệu đã chọn?`)) {
+      toast.loading(`Đang xóa ${selectedDocs.length} tài liệu...`);
+      try {
+        await Promise.all(selectedDocs.map(id => documentService.deleteDocument(id)));
+        toast.dismiss();
+        toast.success(`Đã xóa ${selectedDocs.length} tài liệu`);
+        setSelectedDocs([]);
+      } catch (error) {
+        toast.dismiss();
+        toast.error('Có lỗi xảy ra khi xóa hàng loạt');
+      }
+    }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedDocs.length === filteredAndSortedDocs.length) {
+      setSelectedDocs([]);
+    } else {
+      setSelectedDocs(filteredAndSortedDocs.map(doc => doc.id));
+    }
+  };
+
+  const toggleSelectDoc = (id: string) => {
+    setSelectedDocs(prev => 
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
   };
 
   const resetForm = () => {
@@ -237,6 +299,16 @@ export default function AdminPage() {
             </button>
           </div>
 
+          {selectedDocs.length > 0 && (
+            <Button 
+              variant="destructive" 
+              className="rounded-xl h-11 px-6 font-bold shadow-lg shadow-red-500/10"
+              onClick={handleBulkDelete}
+            >
+              <Trash2 className="mr-2 h-4 w-4" /> Xóa ({selectedDocs.length})
+            </Button>
+          )}
+
           <Dialog open={isDialogOpen} onOpenChange={(open) => {
             setIsDialogOpen(open);
             if (!open) resetForm();
@@ -286,13 +358,25 @@ export default function AdminPage() {
                       </div>
                       <div className="space-y-2">
                         <label className="text-xs font-bold text-navy uppercase tracking-wider">Link Google Drive</label>
-                        <Input 
-                          className="rounded-xl border-slate-200"
-                          placeholder="https://drive.google.com/..."
-                          value={formData.driveLink}
-                          onChange={(e) => setFormData({...formData, driveLink: e.target.value})}
-                          required
-                        />
+                        <div className="flex gap-2">
+                          <Input 
+                            className="rounded-xl border-slate-200"
+                            placeholder="https://drive.google.com/..."
+                            value={formData.driveLink}
+                            onChange={(e) => setFormData({...formData, driveLink: e.target.value})}
+                            required
+                          />
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            className="rounded-xl border-slate-200 hover:bg-slate-50"
+                            onClick={handleExtractTitle}
+                            disabled={isExtracting}
+                          >
+                            {isExtracting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                            <span className="ml-2 hidden sm:inline">Lấy tên</span>
+                          </Button>
+                        </div>
                       </div>
                       <div className="space-y-2">
                         <label className="text-xs font-bold text-navy uppercase tracking-wider">Link ảnh Thumbnail</label>
@@ -379,14 +463,28 @@ export default function AdminPage() {
                                 const fileId = match ? match[1] : null;
                                 if (fileId) currentFileId = fileId;
                                 
-                                if (fileId) {
-                                  try {
-                                    title = `Tài liệu ${fileId.substring(0, 8)}`;
-                                  } catch (e) {
-                                    title = `Tài liệu Drive ${new Date().toLocaleDateString()}`;
+                                // Try to extract title from API
+                                try {
+                                  const response = await fetch('/api/extract-title', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ url: line }),
+                                    signal: AbortSignal.timeout(15000)
+                                  });
+                                  if (response.ok) {
+                                    const data = await response.json();
+                                    title = data.title;
+                                  } else {
+                                    // If not OK, we'll use the fallback in the catch block
+                                    throw new Error('Failed to extract title');
                                   }
-                                } else {
-                                  title = `Tài liệu mới ${new Date().toLocaleDateString()}`;
+                                } catch (e) {
+                                  console.warn(`Could not extract title for ${line}, using fallback.`);
+                                  if (fileId) {
+                                    title = `Tài liệu ${fileId.substring(0, 8)}`;
+                                  } else {
+                                    title = `Tài liệu mới ${new Date().toLocaleDateString()}`;
+                                  }
                                 }
                               }
 
@@ -428,6 +526,14 @@ export default function AdminPage() {
             <table className="w-full text-sm text-left">
               <thead className="text-[10px] text-slate-400 uppercase tracking-widest font-bold bg-slate-50/50 border-b">
                 <tr>
+                  <th className="px-8 py-5 w-10">
+                    <input 
+                      type="checkbox" 
+                      className="rounded border-slate-300 text-amber focus:ring-amber"
+                      checked={filteredAndSortedDocs.length > 0 && selectedDocs.length === filteredAndSortedDocs.length}
+                      onChange={toggleSelectAll}
+                    />
+                  </th>
                   <th className="px-8 py-5">Tên tài liệu & Tác giả</th>
                   <th className="px-8 py-5">Danh mục</th>
                   <th className="px-8 py-5">Ngày tạo</th>
@@ -437,13 +543,21 @@ export default function AdminPage() {
               <tbody className="divide-y divide-slate-50">
                 {docsLoading ? (
                   <tr>
-                    <td colSpan={4} className="px-8 py-20 text-center">
+                    <td colSpan={5} className="px-8 py-20 text-center">
                       <Loader2 className="h-8 w-8 animate-spin mx-auto text-amber" />
                     </td>
                   </tr>
                 ) : filteredAndSortedDocs.length > 0 ? (
                   filteredAndSortedDocs.map((doc) => (
-                    <tr key={doc.id} className="hover:bg-slate-50/50 transition-colors group">
+                    <tr key={doc.id} className={`hover:bg-slate-50/50 transition-colors group ${selectedDocs.includes(doc.id) ? 'bg-amber/5' : ''}`}>
+                      <td className="px-8 py-5">
+                        <input 
+                          type="checkbox" 
+                          className="rounded border-slate-300 text-amber focus:ring-amber"
+                          checked={selectedDocs.includes(doc.id)}
+                          onChange={() => toggleSelectDoc(doc.id)}
+                        />
+                      </td>
                       <td className="px-8 py-5">
                         <div className="font-bold text-navy group-hover:text-amber transition-colors line-clamp-1">{doc.title}</div>
                         {doc.author && (
@@ -476,7 +590,7 @@ export default function AdminPage() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={4} className="px-8 py-20 text-center text-muted-foreground">
+                    <td colSpan={5} className="px-8 py-20 text-center text-muted-foreground">
                       <div className="flex flex-col items-center gap-2">
                         <Search className="h-8 w-8 text-slate-200" />
                         <p>Chưa có tài liệu nào phù hợp.</p>

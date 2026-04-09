@@ -44,24 +44,26 @@ export default function HomePage() {
   return (
     <div className="min-h-screen">
       {/* Hero Banner */}
-      <section className="bg-navy text-white py-16 md:py-24 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10">
+      <section className="bg-navy text-white py-10 md:py-14 relative overflow-hidden">
+        <div className="absolute inset-0 opacity-10 pointer-events-none">
           <div className="absolute top-0 left-0 w-64 h-64 bg-amber rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
           <div className="absolute bottom-0 right-0 w-96 h-96 bg-amber rounded-full blur-3xl translate-x-1/2 translate-y-1/2" />
         </div>
         
-        <div className="container mx-auto px-4 relative z-10 text-center space-y-8">
-          <div className="space-y-4">
-            <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight text-white">
-              Kho Tài Liệu <span className="text-amber">Chuyên Đề</span> & Đề Thi Đỉnh Cao
-            </h1>
-            <p className="text-slate-300 text-lg max-w-2xl mx-auto">
-              Tổng hợp đề thi, tài liệu chuyên đề từ các trường chuyên và sở GD&ĐT trên cả nước.
-            </p>
-          </div>
-          
-          <div className="max-w-3xl mx-auto">
-            <SearchBar value={search} onChange={setSearch} />
+        <div className="container mx-auto px-4 relative z-10 text-center">
+          <div className="max-w-3xl mx-auto space-y-6">
+            <div className="space-y-3">
+              <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight text-white leading-tight">
+                Kho Tài Liệu <span className="text-amber">Chuyên Đề</span> & Đề Thi Đỉnh Cao
+              </h1>
+              <p className="text-slate-300 text-sm md:text-base max-w-md mx-auto">
+                Tổng hợp đề thi, tài liệu chuyên đề từ các trường chuyên và sở GD&ĐT trên cả nước.
+              </p>
+            </div>
+            
+            <div className="max-w-xl mx-auto">
+              <SearchBar value={search} onChange={setSearch} />
+            </div>
           </div>
         </div>
       </section>
