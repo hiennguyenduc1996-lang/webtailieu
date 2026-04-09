@@ -40,7 +40,7 @@
         "userId": { "type": "string" },
         "userName": { "type": "string" },
         "content": { "type": "string" },
-        "imageUrl": { "type": "string" },
+        "imageUrl": { "type": "string", "description": "Optional image URL or base64 image data attached to the comment" },
         "createdAt": { "type": "number" }
       },
       "required": ["documentId", "userId", "userName", "content", "createdAt"]

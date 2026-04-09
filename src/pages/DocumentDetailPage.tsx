@@ -19,7 +19,9 @@ import {
   User,
   ExternalLink,
   Lock,
-  Trash2
+  Trash2,
+  Upload,
+  X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -39,12 +41,15 @@ export default function DocumentDetailPage() {
   const [newComment, setNewComment] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isProcessingImage, setIsProcessingImage] = useState(false);
   const [userName, setUserName] = useState(() => {
     const saved = localStorage.getItem('comment_user_name');
     if (saved) return saved;
     const random = RANDOM_NAMES[Math.floor(Math.random() * RANDOM_NAMES.length)];
     return random;
   });
+
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const isAdmin = useMemo(() => {
     return user?.email?.toLowerCase() === 'hiennguyenduc1996@gmail.com';
@@ -82,6 +87,50 @@ export default function DocumentDetailPage() {
       return () => unsubscribe();
     }
   }, [id]);
+
+  const processImage = (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast.error('Vui lòng chọn tệp hình ảnh');
+      return;
+    }
+
+    if (file.size > 800 * 1024) { // 800KB limit
+      toast.error('Ảnh quá lớn. Vui lòng chọn ảnh dưới 800KB');
+      return;
+    }
+
+    setIsProcessingImage(true);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target?.result as string;
+      setImageUrl(result);
+      setIsProcessingImage(false);
+    };
+    reader.onerror = () => {
+      toast.error('Lỗi khi xử lý ảnh');
+      setIsProcessingImage(false);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const items = e.clipboardData.items;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        const file = items[i].getAsFile();
+        if (file) {
+          processImage(file);
+        }
+      }
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      processImage(file);
+    }
+  };
 
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -229,25 +278,70 @@ export default function DocumentDetailPage() {
             <div className="flex gap-4">
               <div className="flex-grow space-y-4">
                 <textarea 
-                  placeholder="Viết bình luận hoặc góp ý của bạn..."
+                  placeholder="Viết bình luận hoặc góp ý của bạn... (Có thể dán ảnh trực tiếp vào đây)"
                   className="w-full min-h-[100px] p-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-amber outline-none transition-all text-sm"
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
+                  onPaste={handlePaste}
                 />
                 
+                <AnimatePresence>
+                  {imageUrl && (
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      className="relative inline-block"
+                    >
+                      <img 
+                        src={imageUrl} 
+                        alt="Preview" 
+                        className="max-h-40 rounded-xl border border-slate-200 shadow-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setImageUrl('')}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full shadow-lg hover:bg-red-600 transition-colors"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
                 <div className="flex flex-col sm:flex-row gap-3 justify-between items-center">
-                  <div className="relative w-full sm:max-w-xs">
-                    <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                    <Input 
-                      placeholder="Dán link ảnh đáp án..."
-                      className="pl-10 h-10 rounded-xl border-slate-100 bg-slate-50 text-xs"
-                      value={imageUrl}
-                      onChange={(e) => setImageUrl(e.target.value)}
+                  <div className="flex gap-2 w-full sm:w-auto">
+                    <input 
+                      type="file"
+                      ref={fileInputRef}
+                      className="hidden"
+                      accept="image/*"
+                      onChange={handleFileSelect}
                     />
+                    <Button 
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="rounded-xl border-slate-200 text-slate-500 hover:text-navy hover:border-navy gap-2 h-10"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isProcessingImage}
+                    >
+                      {isProcessingImage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                      Tải ảnh lên
+                    </Button>
+                    <div className="relative flex-grow sm:w-48">
+                      <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <Input 
+                        placeholder="Hoặc dán link ảnh..."
+                        className="pl-10 h-10 rounded-xl border-slate-100 bg-slate-50 text-[10px]"
+                        value={imageUrl.startsWith('data:') ? '' : imageUrl}
+                        onChange={(e) => setImageUrl(e.target.value)}
+                      />
+                    </div>
                   </div>
                   <Button 
                     type="submit" 
-                    className="w-full sm:w-auto bg-navy hover:bg-slate-800 text-white font-bold rounded-xl px-8"
+                    className="w-full sm:w-auto bg-navy hover:bg-slate-800 text-white font-bold rounded-xl px-8 h-10"
                     disabled={isSubmitting || (!newComment.trim() && !imageUrl.trim())}
                   >
                     {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}

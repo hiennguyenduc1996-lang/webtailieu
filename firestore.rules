@@ -50,7 +50,7 @@ service cloud.firestore {
     }
 
     function isValidUrl(url) {
-      return url is string && (url == "" || url.matches("^https://.*") || url.matches("^http://.*"));
+      return url is string && (url == "" || url.matches("^https://.*") || url.matches("^http://.*") || url.matches("^data:image/.*"));
     }
 
     // Domain Validators
