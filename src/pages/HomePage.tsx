@@ -79,23 +79,23 @@ export default function HomePage() {
       </section>
 
       <div className="container mx-auto px-4 py-12">
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-12">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 mb-16">
           <Tabs defaultValue="all" className="w-full lg:w-auto" onValueChange={(v) => setCategory(v as any)}>
-            <TabsList className="bg-white p-1 rounded-xl shadow-sm border h-auto flex flex-wrap md:flex-nowrap">
-              <TabsTrigger value="all" className="rounded-lg px-6 py-2.5 data-[state=active]:bg-navy data-[state=active]:text-white flex items-center gap-2">
-                Tất cả <span className="text-[10px] opacity-60 font-bold bg-slate-100 px-1.5 py-0.5 rounded-full group-data-[state=active]:bg-white/20 group-data-[state=active]:text-white">{counts.all}</span>
+            <TabsList className="bg-slate-100/50 p-1.5 rounded-2xl border-none h-auto flex flex-wrap md:flex-nowrap gap-1">
+              <TabsTrigger value="all" className="rounded-xl px-8 py-3.5 text-base font-bold transition-all duration-300 data-[state=active]:bg-navy data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:scale-105 flex items-center gap-3 group">
+                Tất cả <span className="text-xs opacity-60 font-bold bg-white/20 px-2 py-0.5 rounded-full">{counts.all}</span>
               </TabsTrigger>
-              <TabsTrigger value="provincial" className="rounded-lg px-6 py-2.5 data-[state=active]:bg-navy data-[state=active]:text-white flex items-center gap-2">
-                Trường Sở <span className="text-[10px] opacity-60 font-bold bg-slate-100 px-1.5 py-0.5 rounded-full group-data-[state=active]:bg-white/20 group-data-[state=active]:text-white">{counts.provincial}</span>
+              <TabsTrigger value="provincial" className="rounded-xl px-8 py-3.5 text-base font-bold transition-all duration-300 data-[state=active]:bg-navy data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:scale-105 flex items-center gap-3 group">
+                Trường Sở <span className="text-xs opacity-60 font-bold bg-white/20 px-2 py-0.5 rounded-full">{counts.provincial}</span>
               </TabsTrigger>
-              <TabsTrigger value="specialized" className="rounded-lg px-6 py-2.5 data-[state=active]:bg-navy data-[state=active]:text-white flex items-center gap-2">
-                Trường Chuyên <span className="text-[10px] opacity-60 font-bold bg-slate-100 px-1.5 py-0.5 rounded-full group-data-[state=active]:bg-white/20 group-data-[state=active]:text-white">{counts.specialized}</span>
+              <TabsTrigger value="specialized" className="rounded-xl px-8 py-3.5 text-base font-bold transition-all duration-300 data-[state=active]:bg-navy data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:scale-105 flex items-center gap-3 group">
+                Trường Chuyên <span className="text-xs opacity-60 font-bold bg-white/20 px-2 py-0.5 rounded-full">{counts.specialized}</span>
               </TabsTrigger>
-              <TabsTrigger value="thematic" className="rounded-lg px-6 py-2.5 data-[state=active]:bg-navy data-[state=active]:text-white flex items-center gap-2">
-                Chuyên đề <span className="text-[10px] opacity-60 font-bold bg-slate-100 px-1.5 py-0.5 rounded-full group-data-[state=active]:bg-white/20 group-data-[state=active]:text-white">{counts.thematic}</span>
+              <TabsTrigger value="thematic" className="rounded-xl px-8 py-3.5 text-base font-bold transition-all duration-300 data-[state=active]:bg-navy data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:scale-105 flex items-center gap-3 group">
+                Chuyên đề <span className="text-xs opacity-60 font-bold bg-white/20 px-2 py-0.5 rounded-full">{counts.thematic}</span>
               </TabsTrigger>
-              <TabsTrigger value="prediction" className="rounded-lg px-6 py-2.5 data-[state=active]:bg-navy data-[state=active]:text-white flex items-center gap-2">
-                Phát triển & Dự đoán <span className="text-[10px] opacity-60 font-bold bg-slate-100 px-1.5 py-0.5 rounded-full group-data-[state=active]:bg-white/20 group-data-[state=active]:text-white">{counts.prediction}</span>
+              <TabsTrigger value="prediction" className="rounded-xl px-8 py-3.5 text-base font-bold transition-all duration-300 data-[state=active]:bg-navy data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:scale-105 flex items-center gap-3 group">
+                Phát triển & Dự đoán <span className="text-xs opacity-60 font-bold bg-white/20 px-2 py-0.5 rounded-full">{counts.prediction}</span>
               </TabsTrigger>
             </TabsList>
           </Tabs>

@@ -54,7 +54,7 @@ export default function SearchBar({ value, onChange }: SearchBarProps) {
         <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-navy group-focus-within:text-amber transition-colors z-10" />
         <Input
           type="text"
-          placeholder="Nhập tên chuyên đề, tên trường... (ví dụ: Chuyên Lê Hồng Phong)"
+          placeholder="Nhập tên chuyên đề, tên trường... (ví dụ: Nguyễn Khuyến)"
           className="pl-12 h-14 text-base rounded-2xl border-none bg-white shadow-xl focus-visible:ring-2 focus-visible:ring-amber text-navy placeholder:text-slate-400"
           value={value}
           onChange={(e) => onChange(e.target.value)}
