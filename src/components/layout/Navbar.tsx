@@ -1,10 +1,32 @@
-import { Link } from 'react-router-dom';
-import { BookOpen, Search, User, Menu, X } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { BookOpen, Search, User, Menu, X, LogOut } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/src/hooks/useAuth';
+import { auth } from '@/src/lib/firebase';
+import { signOut } from 'firebase/auth';
+import { toast } from 'sonner';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
+  const { user, profile } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      if (localStorage.getItem('hoclieuso_session')) {
+        localStorage.removeItem('hoclieuso_session');
+        toast.success('Đã đăng xuất');
+        window.location.reload();
+        return;
+      }
+      await signOut(auth);
+      toast.success('Đã đăng xuất');
+      navigate('/');
+    } catch (error) {
+      toast.error('Lỗi khi đăng xuất');
+    }
+  };
 
   const navLinks = [
     { name: 'Tài liệu mới', href: '/' },
@@ -13,6 +35,8 @@ export default function Navbar() {
     { name: 'Tài liệu Chuyên đề', href: '/category/thematic' },
     { name: 'Phát triển & Dự đoán', href: '/category/prediction' },
   ];
+
+  const isAdmin = profile?.role === 'admin' || user?.email?.toLowerCase() === 'hiennguyenduc1996@gmail.com';
 
   return (
     <nav className="sticky top-0 z-50 w-full bg-navy text-white shadow-md">
@@ -38,9 +62,23 @@ export default function Navbar() {
                 {link.name}
               </Link>
             ))}
-            <Link to="/admin" className="hover:text-amber transition-colors">
-              <User className="h-5 w-5" />
-            </Link>
+            
+            {user ? (
+              <div className="flex items-center gap-4">
+                {isAdmin && (
+                  <Link to="/admin" className="text-sm font-bold text-amber hover:text-white transition-colors">
+                    Quản trị
+                  </Link>
+                )}
+                <Button variant="ghost" size="icon" onClick={handleLogout} className="hover:text-red-400">
+                  <LogOut className="h-5 w-5" />
+                </Button>
+              </div>
+            ) : (
+              <Link to="/login" className="hover:text-amber transition-colors">
+                <User className="h-5 w-5" />
+              </Link>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -59,19 +97,43 @@ export default function Navbar() {
                 <Link
                   key={link.name}
                   to={link.href}
-                  className="text-sm font-medium transition-colors hover:text-primary"
+                  className="text-sm font-medium transition-colors hover:text-amber"
                   onClick={() => setIsOpen(false)}
                 >
                   {link.name}
                 </Link>
               ))}
-              <Link
-                to="/admin"
-                className="text-sm font-medium transition-colors hover:text-primary"
-                onClick={() => setIsOpen(false)}
-              >
-                Quản trị
-              </Link>
+              
+              {user ? (
+                <>
+                  {isAdmin && (
+                    <Link
+                      to="/admin"
+                      className="text-sm font-bold text-amber transition-colors"
+                      onClick={() => setIsOpen(false)}
+                    >
+                      Quản trị hệ thống
+                    </Link>
+                  )}
+                  <button
+                    onClick={() => {
+                      handleLogout();
+                      setIsOpen(false);
+                    }}
+                    className="text-sm font-medium text-red-400 text-left"
+                  >
+                    Đăng xuất
+                  </button>
+                </>
+              ) : (
+                <Link
+                  to="/login"
+                  className="text-sm font-medium transition-colors hover:text-amber"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Đăng nhập
+                </Link>
+              )}
             </div>
           </div>
         )}

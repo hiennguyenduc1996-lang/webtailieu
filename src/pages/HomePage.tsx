@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { ArrowUpDown, Loader2, UserPlus } from 'lucide-react';
+import { ArrowUpDown, Loader2 } from 'lucide-react';
 import { useDocuments } from '@/src/hooks/useDocuments';
 import { Link } from 'react-router-dom';
 
@@ -58,13 +58,6 @@ export default function HomePage() {
     <div className="min-h-screen">
       {/* Hero Banner */}
       <section className="bg-navy text-white py-6 md:py-10 relative overflow-hidden">
-        <div className="absolute top-4 right-4 z-50">
-          <Link to="/register">
-            <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20 rounded-xl font-bold gap-2">
-              <UserPlus className="h-4 w-4" /> Đăng ký
-            </Button>
-          </Link>
-        </div>
         <div className="absolute inset-0 opacity-10 pointer-events-none">
           <div className="absolute top-0 left-0 w-64 h-64 bg-amber rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
           <div className="absolute bottom-0 right-0 w-96 h-96 bg-amber rounded-full blur-3xl translate-x-1/2 translate-y-1/2" />

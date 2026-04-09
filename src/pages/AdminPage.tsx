@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { LogIn, Plus, Trash2, Edit, Loader2, Save, X, ExternalLink, Search, ArrowUpDown, User } from 'lucide-react';
+import { LogIn, Plus, Trash2, Edit, Loader2, Save, X, ExternalLink, Search, ArrowUpDown, User, Lock } from 'lucide-react';
 import { auth } from '@/src/lib/firebase';
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { useAuth } from '@/src/hooks/useAuth';
@@ -18,9 +18,8 @@ import {
   DialogTrigger
 } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Category, Document, RegistrationRequest } from '@/src/types';
+import { Category, Document } from '@/src/types';
 import { motion } from 'motion/react';
-import { registrationService } from '@/src/services/registrationService';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -49,65 +48,6 @@ export default function AdminPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'az'>('newest');
   const [selectedDocs, setSelectedDocs] = useState<string[]>([]);
-  const [regRequests, setRegRequests] = useState<RegistrationRequest[]>([]);
-  const [isRegLoading, setIsRegLoading] = useState(false);
-
-  useEffect(() => {
-    const isAdmin = profile?.role === 'admin' || user?.email?.toLowerCase() === 'hiennguyenduc1996@gmail.com';
-    if (user && isAdmin) {
-      fetchRegRequests();
-    }
-  }, [user, profile]);
-
-  const fetchRegRequests = async () => {
-    setIsRegLoading(true);
-    try {
-      const requests = await registrationService.getRequests();
-      setRegRequests(requests);
-    } catch (error) {
-      console.error('Error fetching registration requests:', error);
-    } finally {
-      setIsRegLoading(false);
-    }
-  };
-
-  const handleApproveRequest = async (request: RegistrationRequest) => {
-    try {
-      // In a real app, we would create the user in Firebase Auth here
-      // But for this demo, we'll just update the status
-      await registrationService.updateRequestStatus(request.id, 'approved');
-      toast.success('Đã chấp nhận yêu cầu');
-      fetchRegRequests();
-    } catch (error) {
-      toast.error('Có lỗi xảy ra');
-    }
-  };
-
-  const handleRejectRequest = async (id: string) => {
-    try {
-      await registrationService.deleteRequest(id);
-      toast.success('Đã xóa yêu cầu đăng ký');
-      fetchRegRequests();
-    } catch (error) {
-      toast.error('Có lỗi xảy ra');
-    }
-  };
-
-  const handleDeleteAllRequests = async () => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa TẤT CẢ yêu cầu đăng ký không?')) return;
-    
-    setIsRegLoading(true);
-    try {
-      const promises = regRequests.map(req => registrationService.deleteRequest(req.id));
-      await Promise.all(promises);
-      toast.success('Đã xóa tất cả yêu cầu đăng ký');
-      fetchRegRequests();
-    } catch (error) {
-      toast.error('Có lỗi xảy ra khi xóa');
-    } finally {
-      setIsRegLoading(false);
-    }
-  };
 
   // Form state
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -205,31 +145,27 @@ export default function AdminPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm('Bạn có chắc chắn muốn xóa tài liệu này?')) {
-      try {
-        await documentService.deleteDocument(id);
-        toast.success('Đã xóa tài liệu');
-        setSelectedDocs(prev => prev.filter(item => item !== id));
-      } catch (error) {
-        toast.error('Không thể xóa tài liệu');
-      }
+    try {
+      await documentService.deleteDocument(id);
+      toast.success('Đã xóa tài liệu');
+      setSelectedDocs(prev => prev.filter(item => item !== id));
+    } catch (error) {
+      toast.error('Không thể xóa tài liệu');
     }
   };
 
   const handleBulkDelete = async () => {
     if (selectedDocs.length === 0) return;
     
-    if (confirm(`Bạn có chắc chắn muốn xóa ${selectedDocs.length} tài liệu đã chọn?`)) {
-      toast.loading(`Đang xóa ${selectedDocs.length} tài liệu...`);
-      try {
-        await Promise.all(selectedDocs.map(id => documentService.deleteDocument(id)));
-        toast.dismiss();
-        toast.success(`Đã xóa ${selectedDocs.length} tài liệu`);
-        setSelectedDocs([]);
-      } catch (error) {
-        toast.dismiss();
-        toast.error('Có lỗi xảy ra khi xóa hàng loạt');
-      }
+    toast.loading(`Đang xóa ${selectedDocs.length} tài liệu...`);
+    try {
+      await Promise.all(selectedDocs.map(id => documentService.deleteDocument(id)));
+      toast.dismiss();
+      toast.success(`Đã xóa ${selectedDocs.length} tài liệu`);
+      setSelectedDocs([]);
+    } catch (error) {
+      toast.dismiss();
+      toast.error('Có lỗi xảy ra khi xóa hàng loạt');
     }
   };
 
@@ -329,10 +265,12 @@ export default function AdminPage() {
     };
   }, [documents, searchTerm]);
 
+  const isAdmin = user?.email?.toLowerCase() === 'hiennguyenduc1996@gmail.com' || profile?.role === 'admin';
+
   if (authLoading) {
     return (
-      <div className="flex justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="flex justify-center py-40">
+        <Loader2 className="h-12 w-12 animate-spin text-amber" />
       </div>
     );
   }
@@ -378,6 +316,21 @@ export default function AdminPage() {
             </form>
           </CardContent>
         </Card>
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="container mx-auto px-4 py-40 text-center">
+        <div className="max-w-md mx-auto bg-white p-8 rounded-3xl shadow-xl border border-slate-100">
+          <Lock className="h-16 w-16 text-red-500 mx-auto mb-6" />
+          <h1 className="text-2xl font-black text-navy mb-2">Truy cập bị từ chối</h1>
+          <p className="text-slate-500 mb-8">Bạn không có quyền truy cập vào trang quản trị.</p>
+          <Button onClick={() => window.location.href = '/'} className="bg-navy hover:bg-slate-800 text-white rounded-xl h-12 px-8 font-bold">
+            Quay lại trang chủ
+          </Button>
+        </div>
       </div>
     );
   }
@@ -703,188 +656,85 @@ export default function AdminPage() {
 
       <Card className="border-none shadow-xl rounded-3xl overflow-hidden bg-white">
         <CardContent className="p-0">
-          <Tabs defaultValue="docs">
-            <div className="px-8 py-4 bg-slate-50/50 border-b">
-              <TabsList className="bg-slate-200/50 p-1 rounded-xl">
-                <TabsTrigger value="docs" className="rounded-lg px-6 font-bold data-[state=active]:bg-white">Tài liệu</TabsTrigger>
-                <TabsTrigger value="requests" className="rounded-lg px-6 font-bold data-[state=active]:bg-white">
-                  Yêu cầu đăng ký {regRequests.filter(r => r.status === 'pending').length > 0 && (
-                    <span className="ml-2 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
-                      {regRequests.filter(r => r.status === 'pending').length}
-                    </span>
-                  )}
-                </TabsTrigger>
-              </TabsList>
-            </div>
-
-            <TabsContent value="docs" className="m-0">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                  <thead className="text-[10px] text-slate-400 uppercase tracking-widest font-bold bg-slate-50/50 border-b">
-                    <tr>
-                      <th className="px-8 py-5 w-10">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="text-[10px] text-slate-400 uppercase tracking-widest font-bold bg-slate-50/50 border-b">
+                <tr>
+                  <th className="px-8 py-5 w-10">
+                    <input 
+                      type="checkbox" 
+                      className="rounded border-slate-300 text-amber focus:ring-amber"
+                      checked={filteredAndSortedDocs.length > 0 && selectedDocs.length === filteredAndSortedDocs.length}
+                      onChange={toggleSelectAll}
+                    />
+                  </th>
+                  <th className="px-8 py-5">Tên tài liệu & Tác giả</th>
+                  <th className="px-8 py-5">Danh mục</th>
+                  <th className="px-8 py-5">Ngày tạo</th>
+                  <th className="px-8 py-5 text-right">Hành động</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {docsLoading ? (
+                  <tr>
+                    <td colSpan={5} className="px-8 py-20 text-center">
+                      <Loader2 className="h-8 w-8 animate-spin mx-auto text-amber" />
+                    </td>
+                  </tr>
+                ) : filteredAndSortedDocs.length > 0 ? (
+                  filteredAndSortedDocs.map((doc) => (
+                    <tr key={doc.id} className={`hover:bg-slate-50/50 transition-colors group ${selectedDocs.includes(doc.id) ? 'bg-amber/5' : ''}`}>
+                      <td className="px-8 py-5">
                         <input 
                           type="checkbox" 
                           className="rounded border-slate-300 text-amber focus:ring-amber"
-                          checked={filteredAndSortedDocs.length > 0 && selectedDocs.length === filteredAndSortedDocs.length}
-                          onChange={toggleSelectAll}
+                          checked={selectedDocs.includes(doc.id)}
+                          onChange={() => toggleSelectDoc(doc.id)}
                         />
-                      </th>
-                      <th className="px-8 py-5">Tên tài liệu & Tác giả</th>
-                      <th className="px-8 py-5">Danh mục</th>
-                      <th className="px-8 py-5">Ngày tạo</th>
-                      <th className="px-8 py-5 text-right">Hành động</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50">
-                    {docsLoading ? (
-                      <tr>
-                        <td colSpan={5} className="px-8 py-20 text-center">
-                          <Loader2 className="h-8 w-8 animate-spin mx-auto text-amber" />
-                        </td>
-                      </tr>
-                    ) : filteredAndSortedDocs.length > 0 ? (
-                      filteredAndSortedDocs.map((doc) => (
-                        <tr key={doc.id} className={`hover:bg-slate-50/50 transition-colors group ${selectedDocs.includes(doc.id) ? 'bg-amber/5' : ''}`}>
-                          <td className="px-8 py-5">
-                            <input 
-                              type="checkbox" 
-                              className="rounded border-slate-300 text-amber focus:ring-amber"
-                              checked={selectedDocs.includes(doc.id)}
-                              onChange={() => toggleSelectDoc(doc.id)}
-                            />
-                          </td>
-                          <td className="px-8 py-5">
-                            <div className="font-bold text-navy group-hover:text-amber transition-colors line-clamp-1">{doc.title}</div>
-                            {doc.author && (
-                              <div className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
-                                <span className="w-3 h-[1px] bg-slate-200" />
-                                {doc.author}
-                              </div>
-                            )}
-                            <a href={doc.driveLink} target="_blank" rel="noreferrer" className="text-[10px] text-slate-400 hover:text-navy flex items-center gap-1 mt-2 transition-colors">
-                              <ExternalLink className="h-3 w-3" /> drive.google.com/...
-                            </a>
-                          </td>
-                          <td className="px-8 py-5">
-                            <span className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${
-                              doc.category === 'specialized' ? 'bg-purple-50 text-purple-700 border-purple-100' :
-                              doc.category === 'provincial' ? 'bg-blue-50 text-blue-700 border-blue-100' :
-                              'bg-emerald-50 text-emerald-700 border-emerald-100'
-                            }`}>
-                              {CATEGORY_LABELS[doc.category]}
-                            </span>
-                          </td>
-                          <td className="px-8 py-5 text-slate-500 font-medium">{new Date(doc.createdAt).toLocaleDateString('vi-VN')}</td>
-                          <td className="px-8 py-5 text-right">
-                            <div className="flex justify-end gap-1">
-                              <Button variant="ghost" size="icon" className="rounded-lg hover:bg-blue-50 hover:text-blue-600" onClick={() => startEdit(doc)}><Edit className="h-4 w-4" /></Button>
-                              <Button variant="ghost" size="icon" className="rounded-lg hover:bg-red-50 hover:text-red-600" onClick={() => handleDelete(doc.id)}><Trash2 className="h-4 w-4" /></Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={5} className="px-8 py-20 text-center text-muted-foreground">
-                          <div className="flex flex-col items-center gap-2">
-                            <Search className="h-8 w-8 text-slate-200" />
-                            <p>Chưa có tài liệu nào phù hợp.</p>
+                      </td>
+                      <td className="px-8 py-5">
+                        <div className="font-bold text-navy group-hover:text-amber transition-colors line-clamp-1">{doc.title}</div>
+                        {doc.author && (
+                          <div className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
+                            <span className="w-3 h-[1px] bg-slate-200" />
+                            {doc.author}
                           </div>
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="requests" className="m-0">
-              <div className="p-4 bg-slate-50/50 border-b flex justify-between items-center">
-                <div className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                  Danh sách yêu cầu ({regRequests.length})
-                </div>
-                {regRequests.length > 0 && (
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="text-red-500 hover:text-red-600 hover:bg-red-50 font-bold text-xs rounded-lg"
-                    onClick={handleDeleteAllRequests}
-                  >
-                    <Trash2 className="h-3.5 w-3.5 mr-2" /> Xóa tất cả
-                  </Button>
-                )}
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                  <thead className="text-[10px] text-slate-400 uppercase tracking-widest font-bold bg-slate-50/50 border-b">
-                    <tr>
-                      <th className="px-8 py-5">Họ và Tên</th>
-                      <th className="px-8 py-5">Tên tài khoản</th>
-                      <th className="px-8 py-5">Ngày yêu cầu</th>
-                      <th className="px-8 py-5">Trạng thái</th>
-                      <th className="px-8 py-5 text-right">Hành động</th>
+                        )}
+                        <a href={doc.driveLink} target="_blank" rel="noreferrer" className="text-[10px] text-slate-400 hover:text-navy flex items-center gap-1 mt-2 transition-colors">
+                          <ExternalLink className="h-3 w-3" /> drive.google.com/...
+                        </a>
+                      </td>
+                      <td className="px-8 py-5">
+                        <span className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${
+                          doc.category === 'specialized' ? 'bg-purple-50 text-purple-700 border-purple-100' :
+                          doc.category === 'provincial' ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                          'bg-emerald-50 text-emerald-700 border-emerald-100'
+                        }`}>
+                          {CATEGORY_LABELS[doc.category]}
+                        </span>
+                      </td>
+                      <td className="px-8 py-5 text-slate-500 font-medium">{new Date(doc.createdAt).toLocaleDateString('vi-VN')}</td>
+                      <td className="px-8 py-5 text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button variant="ghost" size="icon" className="rounded-lg hover:bg-blue-50 hover:text-blue-600" onClick={() => startEdit(doc)}><Edit className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" className="rounded-lg hover:bg-red-50 hover:text-red-600" onClick={() => handleDelete(doc.id)}><Trash2 className="h-4 w-4" /></Button>
+                        </div>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50">
-                    {isRegLoading ? (
-                      <tr>
-                        <td colSpan={5} className="px-8 py-20 text-center">
-                          <Loader2 className="h-8 w-8 animate-spin mx-auto text-amber" />
-                        </td>
-                      </tr>
-                    ) : regRequests.length > 0 ? (
-                      regRequests.map((req) => (
-                        <tr key={req.id} className="hover:bg-slate-50/50 transition-colors">
-                          <td className="px-8 py-5 font-bold text-navy">{req.fullName}</td>
-                          <td className="px-8 py-5 text-slate-600">
-                            <div>{req.username}</div>
-                          </td>
-                          <td className="px-8 py-5 text-slate-500">{new Date(req.createdAt).toLocaleDateString('vi-VN')}</td>
-                          <td className="px-8 py-5">
-                            <span className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${
-                              req.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
-                              req.status === 'rejected' ? 'bg-red-50 text-red-700 border-red-100' :
-                              'bg-amber-50 text-amber-700 border-amber-100'
-                            }`}>
-                              {req.status === 'approved' ? 'Đã duyệt' : req.status === 'rejected' ? 'Từ chối' : 'Chờ duyệt'}
-                            </span>
-                          </td>
-                          <td className="px-8 py-5 text-right">
-                            {req.status === 'pending' && (
-                              <div className="flex justify-end gap-2">
-                                <Button 
-                                  size="sm" 
-                                  className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-bold text-xs"
-                                  onClick={() => handleApproveRequest(req)}
-                                >
-                                  Duyệt
-                                </Button>
-                                <Button 
-                                  size="sm" 
-                                  variant="outline"
-                                  className="border-red-200 text-red-600 hover:bg-red-50 rounded-lg font-bold text-xs"
-                                  onClick={() => handleRejectRequest(req.id)}
-                                >
-                                  Từ chối
-                                </Button>
-                              </div>
-                            )}
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={5} className="px-8 py-20 text-center text-muted-foreground">
-                          <p>Chưa có yêu cầu đăng ký nào.</p>
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </TabsContent>
-          </Tabs>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={5} className="px-8 py-20 text-center text-muted-foreground">
+                      <div className="flex flex-col items-center gap-2">
+                        <Search className="h-8 w-8 text-slate-200" />
+                        <p>Chưa có tài liệu nào phù hợp.</p>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </CardContent>
       </Card>
     </div>

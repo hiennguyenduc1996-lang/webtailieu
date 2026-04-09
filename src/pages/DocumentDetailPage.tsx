@@ -18,20 +18,41 @@ import {
   Loader2, 
   User,
   ExternalLink,
-  Lock
+  Lock,
+  Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+
+const RANDOM_NAMES = [
+  'Học sinh chăm chỉ', 'Người lạ ẩn danh', 'Thành viên mới', 'Bạn đọc nhiệt tình',
+  'Người yêu tiếng Anh', 'Sĩ tử 2k6', 'Sĩ tử 2k7', 'Thầy giáo vui tính',
+  'Cô giáo thân thiện', 'Bạn nhỏ hiếu học', 'Người qua đường', 'Fan cứng NK12'
+];
 
 export default function DocumentDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { documents, loading: docsLoading } = useDocuments();
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const [doc, setDoc] = useState<Document | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [userName, setUserName] = useState(() => {
+    const saved = localStorage.getItem('comment_user_name');
+    if (saved) return saved;
+    const random = RANDOM_NAMES[Math.floor(Math.random() * RANDOM_NAMES.length)];
+    return random;
+  });
+
+  const isAdmin = useMemo(() => {
+    return user?.email?.toLowerCase() === 'hiennguyenduc1996@gmail.com';
+  }, [user]);
+
+  useEffect(() => {
+    localStorage.setItem('comment_user_name', userName);
+  }, [userName]);
 
   const relatedDocs = useMemo(() => {
     if (!doc || !documents.length) return [];
@@ -64,29 +85,47 @@ export default function DocumentDetailPage() {
 
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || profile?.status !== 'approved') {
-      toast.error('Bạn cần có tài khoản đã được duyệt để bình luận');
+    if (!newComment.trim() && !imageUrl.trim()) return;
+    if (!userName.trim()) {
+      toast.error('Vui lòng nhập tên của bạn');
       return;
     }
-    if (!newComment.trim() && !imageUrl.trim()) return;
 
     setIsSubmitting(true);
     try {
-      await commentService.addComment({
+      const trimmedComment = newComment.trim();
+      const trimmedImageUrl = imageUrl.trim();
+
+      const commentData: any = {
         documentId: id!,
-        userId: user.uid,
-        userName: profile.fullName || user.email?.split('@')[0] || 'Người dùng',
-        content: newComment,
-        imageUrl: imageUrl || undefined,
+        userId: user?.uid || 'anonymous',
+        userName: userName.trim(),
+        content: trimmedComment,
         createdAt: Date.now()
-      });
+      };
+
+      if (trimmedImageUrl) {
+        commentData.imageUrl = trimmedImageUrl;
+      }
+
+      await commentService.addComment(commentData);
       setNewComment('');
       setImageUrl('');
       toast.success('Đã gửi bình luận');
     } catch (error) {
-      toast.error('Không thể gửi bình luận');
+      console.error('Comment submission error:', error);
+      toast.error('Không thể gửi bình luận. Vui lòng thử lại.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    try {
+      await commentService.deleteComment(commentId);
+      toast.success('Đã xóa bình luận');
+    } catch (error) {
+      toast.error('Không thể xóa bình luận');
     }
   };
 
@@ -171,63 +210,53 @@ export default function DocumentDetailPage() {
           </div>
 
           {/* Comment Form */}
-          {user ? (
-            profile?.status === 'approved' ? (
-              <form onSubmit={handleAddComment} className="space-y-4 bg-white p-6 rounded-3xl shadow-lg border border-slate-50">
-                <div className="flex gap-4">
-                  <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0">
-                    <User className="h-5 w-5 text-slate-400" />
-                  </div>
-                  <div className="flex-grow space-y-4">
-                    <textarea 
-                      placeholder="Viết bình luận hoặc góp ý của bạn..."
-                      className="w-full min-h-[100px] p-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-amber outline-none transition-all text-sm"
-                      value={newComment}
-                      onChange={(e) => setNewComment(e.target.value)}
-                    />
-                    
-                    <div className="flex flex-col sm:flex-row gap-3 justify-between items-center">
-                      <div className="relative w-full sm:max-w-xs">
-                        <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                        <Input 
-                          placeholder="Dán link ảnh đáp án..."
-                          className="pl-10 h-10 rounded-xl border-slate-100 bg-slate-50 text-xs"
-                          value={imageUrl}
-                          onChange={(e) => setImageUrl(e.target.value)}
-                        />
-                      </div>
-                      <Button 
-                        type="submit" 
-                        className="w-full sm:w-auto bg-navy hover:bg-slate-800 text-white font-bold rounded-xl px-8"
-                        disabled={isSubmitting || (!newComment.trim() && !imageUrl.trim())}
-                      >
-                        {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
-                        Gửi bình luận
-                      </Button>
-                    </div>
-                  </div>
+          <form onSubmit={handleAddComment} className="space-y-4 bg-white p-6 rounded-3xl shadow-lg border border-slate-50">
+            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center mb-2">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <div className="w-8 h-8 rounded-full bg-amber/10 flex items-center justify-center flex-shrink-0">
+                  <User className="h-4 w-4 text-amber" />
                 </div>
-              </form>
-            ) : (
-              <div className="bg-amber/5 border border-amber/10 p-6 rounded-3xl text-center space-y-3">
-                <Lock className="h-8 w-8 text-amber mx-auto" />
-                <p className="text-sm font-bold text-navy">Tài khoản của bạn đang chờ phê duyệt</p>
-                <p className="text-xs text-slate-500">Bạn cần được Admin phê duyệt để có thể tham gia bình luận.</p>
+                <Input 
+                  placeholder="Tên của bạn..."
+                  className="h-9 rounded-xl border-slate-100 bg-slate-50 text-xs font-bold text-navy w-full sm:w-48"
+                  value={userName}
+                  onChange={(e) => setUserName(e.target.value)}
+                />
               </div>
-            )
-          ) : (
-            <div className="bg-slate-50 p-8 rounded-3xl text-center space-y-4 border-2 border-dashed border-slate-200">
-              <p className="text-slate-500 font-medium">Vui lòng đăng ký và đăng nhập để tham gia thảo luận.</p>
-              <div className="flex justify-center gap-3">
-                <Link to="/register">
-                  <Button variant="outline" className="rounded-xl font-bold">Đăng ký</Button>
-                </Link>
-                <Link to="/admin">
-                  <Button className="bg-navy text-white rounded-xl font-bold">Đăng nhập</Button>
-                </Link>
+              <p className="text-[10px] text-slate-400 font-medium italic">Bạn có thể thay đổi tên hiển thị của mình.</p>
+            </div>
+
+            <div className="flex gap-4">
+              <div className="flex-grow space-y-4">
+                <textarea 
+                  placeholder="Viết bình luận hoặc góp ý của bạn..."
+                  className="w-full min-h-[100px] p-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-amber outline-none transition-all text-sm"
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                />
+                
+                <div className="flex flex-col sm:flex-row gap-3 justify-between items-center">
+                  <div className="relative w-full sm:max-w-xs">
+                    <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <Input 
+                      placeholder="Dán link ảnh đáp án..."
+                      className="pl-10 h-10 rounded-xl border-slate-100 bg-slate-50 text-xs"
+                      value={imageUrl}
+                      onChange={(e) => setImageUrl(e.target.value)}
+                    />
+                  </div>
+                  <Button 
+                    type="submit" 
+                    className="w-full sm:w-auto bg-navy hover:bg-slate-800 text-white font-bold rounded-xl px-8"
+                    disabled={isSubmitting || (!newComment.trim() && !imageUrl.trim())}
+                  >
+                    {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
+                    Gửi bình luận
+                  </Button>
+                </div>
               </div>
             </div>
-          )}
+          </form>
 
           {/* Comments List */}
           <div className="space-y-6">
@@ -243,9 +272,21 @@ export default function DocumentDetailPage() {
                     <User className="h-5 w-5 text-slate-400" />
                   </div>
                   <div className="flex-grow space-y-2">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-navy text-sm">{comment.userName}</span>
-                      <span className="text-[10px] text-slate-400">{new Date(comment.createdAt).toLocaleString('vi-VN')}</span>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-navy text-sm">{comment.userName}</span>
+                        <span className="text-[10px] text-slate-400">{new Date(comment.createdAt).toLocaleString('vi-VN')}</span>
+                      </div>
+                      {isAdmin && (
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                          onClick={() => handleDeleteComment(comment.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                     <div className="bg-white p-4 rounded-2xl rounded-tl-none shadow-sm border border-slate-100">
                       <p className="text-sm text-slate-700 whitespace-pre-wrap">{comment.content}</p>

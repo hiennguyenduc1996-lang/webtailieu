@@ -34,6 +34,7 @@ export interface RegistrationRequest {
   id: string;
   fullName: string;
   username: string;
+  password?: string;
   status: 'pending' | 'approved' | 'rejected';
   createdAt: number;
 }

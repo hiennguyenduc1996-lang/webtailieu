@@ -44,19 +44,6 @@
         "createdAt": { "type": "number" }
       },
       "required": ["documentId", "userId", "userName", "content", "createdAt"]
-    },
-    "RegistrationRequest": {
-      "title": "RegistrationRequest",
-      "description": "User registration request for admin approval",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "fullName": { "type": "string" },
-        "username": { "type": "string" },
-        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
-        "createdAt": { "type": "number" }
-      },
-      "required": ["fullName", "username", "status", "createdAt"]
     }
   },
   "firestore": {
@@ -71,10 +58,6 @@
     "/comments/{commentId}": {
       "schema": "Comment",
       "description": "Collection of comments"
-    },
-    "/registration_requests/{requestId}": {
-      "schema": "RegistrationRequest",
-      "description": "Collection of registration requests"
     }
   }
 }
