@@ -11,7 +11,7 @@
 
 @layer base {
   h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-display);
+    font-family: var(--font-sans);
     @apply font-bold tracking-tight text-navy;
   }
 }

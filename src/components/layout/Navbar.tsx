@@ -22,7 +22,7 @@ export default function Navbar() {
               <div className="bg-amber p-1.5 rounded-lg">
                 <BookOpen className="h-5 w-5 text-navy" />
               </div>
-              <span className="text-xl font-bold tracking-tight">Học Liệu Số</span>
+              <span className="text-xl font-bold tracking-tight">Đề Thi Tiếng Anh NK12</span>
             </Link>
           </div>
 

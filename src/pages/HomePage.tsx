@@ -54,7 +54,7 @@ export default function HomePage() {
           <div className="max-w-3xl mx-auto space-y-6">
             <div className="space-y-3">
               <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight text-white leading-tight">
-                Kho Tài Liệu <span className="text-amber">Chuyên Đề</span> & Đề Thi Đỉnh Cao
+                Kho Tài Liệu <span className="text-amber">Chuyên Đề</span> & Đề Thi Tiếng Anh
               </h1>
               <p className="text-slate-300 text-sm md:text-base max-w-md mx-auto">
                 Tổng hợp đề thi, tài liệu chuyên đề từ các trường chuyên và sở GD&ĐT trên cả nước.
