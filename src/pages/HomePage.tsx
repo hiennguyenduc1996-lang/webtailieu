@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import SearchBar from '@/src/components/documents/SearchBar';
 import DocumentCard from '@/src/components/documents/DocumentCard';
+import CountdownTimer from '@/src/components/documents/CountdownTimer';
 import { Category } from '@/src/types';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
@@ -70,6 +71,8 @@ export default function HomePage() {
                 Tổng hợp đề thi, tài liệu chuyên đề từ các trường chuyên và sở GD&ĐT trên cả nước.
               </p>
             </div>
+
+            <CountdownTimer />
             
             <div className="max-w-xl mx-auto">
               <SearchBar value={search} onChange={setSearch} />
