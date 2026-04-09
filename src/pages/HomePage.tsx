@@ -41,22 +41,32 @@ export default function HomePage() {
     return docs;
   }, [documents, search, category, sortBy]);
 
+  const counts = useMemo(() => {
+    return {
+      all: documents.length,
+      provincial: documents.filter(d => d.category === 'provincial').length,
+      specialized: documents.filter(d => d.category === 'specialized').length,
+      thematic: documents.filter(d => d.category === 'thematic').length,
+      prediction: documents.filter(d => d.category === 'prediction').length,
+    };
+  }, [documents]);
+
   return (
     <div className="min-h-screen">
       {/* Hero Banner */}
-      <section className="bg-navy text-white py-10 md:py-14 relative overflow-hidden">
+      <section className="bg-navy text-white py-6 md:py-10 relative overflow-hidden">
         <div className="absolute inset-0 opacity-10 pointer-events-none">
           <div className="absolute top-0 left-0 w-64 h-64 bg-amber rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
           <div className="absolute bottom-0 right-0 w-96 h-96 bg-amber rounded-full blur-3xl translate-x-1/2 translate-y-1/2" />
         </div>
         
         <div className="container mx-auto px-4 relative z-10 text-center">
-          <div className="max-w-3xl mx-auto space-y-6">
-            <div className="space-y-3">
+          <div className="max-w-3xl mx-auto space-y-4">
+            <div className="space-y-2">
               <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight text-white leading-tight">
                 Kho Tài Liệu <span className="text-amber">Chuyên Đề</span> & Đề Thi Tiếng Anh
               </h1>
-              <p className="text-slate-300 text-sm md:text-base max-w-md mx-auto">
+              <p className="text-slate-300 text-xs md:text-sm max-w-md mx-auto">
                 Tổng hợp đề thi, tài liệu chuyên đề từ các trường chuyên và sở GD&ĐT trên cả nước.
               </p>
             </div>
@@ -72,10 +82,21 @@ export default function HomePage() {
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-12">
           <Tabs defaultValue="all" className="w-full lg:w-auto" onValueChange={(v) => setCategory(v as any)}>
             <TabsList className="bg-white p-1 rounded-xl shadow-sm border h-auto flex flex-wrap md:flex-nowrap">
-              <TabsTrigger value="all" className="rounded-lg px-6 py-2.5 data-[state=active]:bg-navy data-[state=active]:text-white">Tất cả</TabsTrigger>
-              <TabsTrigger value="provincial" className="rounded-lg px-6 py-2.5 data-[state=active]:bg-navy data-[state=active]:text-white">Trường Sở</TabsTrigger>
-              <TabsTrigger value="specialized" className="rounded-lg px-6 py-2.5 data-[state=active]:bg-navy data-[state=active]:text-white">Trường Chuyên</TabsTrigger>
-              <TabsTrigger value="thematic" className="rounded-lg px-6 py-2.5 data-[state=active]:bg-navy data-[state=active]:text-white">Chuyên đề</TabsTrigger>
+              <TabsTrigger value="all" className="rounded-lg px-6 py-2.5 data-[state=active]:bg-navy data-[state=active]:text-white flex items-center gap-2">
+                Tất cả <span className="text-[10px] opacity-60 font-bold bg-slate-100 px-1.5 py-0.5 rounded-full group-data-[state=active]:bg-white/20 group-data-[state=active]:text-white">{counts.all}</span>
+              </TabsTrigger>
+              <TabsTrigger value="provincial" className="rounded-lg px-6 py-2.5 data-[state=active]:bg-navy data-[state=active]:text-white flex items-center gap-2">
+                Trường Sở <span className="text-[10px] opacity-60 font-bold bg-slate-100 px-1.5 py-0.5 rounded-full group-data-[state=active]:bg-white/20 group-data-[state=active]:text-white">{counts.provincial}</span>
+              </TabsTrigger>
+              <TabsTrigger value="specialized" className="rounded-lg px-6 py-2.5 data-[state=active]:bg-navy data-[state=active]:text-white flex items-center gap-2">
+                Trường Chuyên <span className="text-[10px] opacity-60 font-bold bg-slate-100 px-1.5 py-0.5 rounded-full group-data-[state=active]:bg-white/20 group-data-[state=active]:text-white">{counts.specialized}</span>
+              </TabsTrigger>
+              <TabsTrigger value="thematic" className="rounded-lg px-6 py-2.5 data-[state=active]:bg-navy data-[state=active]:text-white flex items-center gap-2">
+                Chuyên đề <span className="text-[10px] opacity-60 font-bold bg-slate-100 px-1.5 py-0.5 rounded-full group-data-[state=active]:bg-white/20 group-data-[state=active]:text-white">{counts.thematic}</span>
+              </TabsTrigger>
+              <TabsTrigger value="prediction" className="rounded-lg px-6 py-2.5 data-[state=active]:bg-navy data-[state=active]:text-white flex items-center gap-2">
+                Phát triển & Dự đoán <span className="text-[10px] opacity-60 font-bold bg-slate-100 px-1.5 py-0.5 rounded-full group-data-[state=active]:bg-white/20 group-data-[state=active]:text-white">{counts.prediction}</span>
+              </TabsTrigger>
             </TabsList>
           </Tabs>
 

@@ -1,4 +1,4 @@
-export type Category = 'latest' | 'provincial' | 'specialized' | 'thematic' | 'placeholder';
+export type Category = 'latest' | 'provincial' | 'specialized' | 'thematic' | 'prediction' | 'placeholder';
 
 export interface Document {
   id: string;

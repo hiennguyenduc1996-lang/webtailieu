@@ -31,6 +31,7 @@ const CATEGORY_LABELS: Record<Category, string> = {
   provincial: 'Đề Trường Sở',
   specialized: 'Đề Trường Chuyên',
   thematic: 'Tài liệu Chuyên đề',
+  prediction: 'Đề phát triển và Dự đoán',
   placeholder: 'Mục dự phòng'
 };
 
@@ -398,6 +399,7 @@ export default function AdminPage() {
                           <option value="provincial">Đề Trường Sở</option>
                           <option value="specialized">Đề Trường Chuyên</option>
                           <option value="thematic">Tài liệu Chuyên đề</option>
+                          <option value="prediction">Đề phát triển và Dự đoán</option>
                           <option value="placeholder">Mục dự phòng</option>
                         </select>
                       </div>
@@ -428,6 +430,7 @@ export default function AdminPage() {
                           <option value="provincial">Đề Trường Sở</option>
                           <option value="specialized">Đề Trường Chuyên</option>
                           <option value="thematic">Tài liệu Chuyên đề</option>
+                          <option value="prediction">Đề phát triển và Dự đoán</option>
                         </select>
                       </div>
                       <Button 

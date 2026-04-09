@@ -11,6 +11,7 @@ export default function Navbar() {
     { name: 'Đề Trường Sở', href: '/category/provincial' },
     { name: 'Đề Trường Chuyên', href: '/category/specialized' },
     { name: 'Tài liệu Chuyên đề', href: '/category/thematic' },
+    { name: 'Phát triển & Dự đoán', href: '/category/prediction' },
   ];
 
   return (

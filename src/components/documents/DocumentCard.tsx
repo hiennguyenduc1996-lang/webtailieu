@@ -10,6 +10,24 @@ interface DocumentCardProps {
 
 const DocumentCard: React.FC<DocumentCardProps> = ({ doc }) => {
   const [imgError, setImgError] = React.useState(false);
+  const [isDownloaded, setIsDownloaded] = React.useState(false);
+
+  React.useEffect(() => {
+    const downloaded = JSON.parse(localStorage.getItem('downloaded_docs') || '[]');
+    if (downloaded.includes(doc.id)) {
+      setIsDownloaded(true);
+    }
+  }, [doc.id]);
+
+  const handleDownload = () => {
+    const downloaded = JSON.parse(localStorage.getItem('downloaded_docs') || '[]');
+    if (!downloaded.includes(doc.id)) {
+      const newDownloaded = [...downloaded, doc.id];
+      localStorage.setItem('downloaded_docs', JSON.stringify(newDownloaded));
+      setIsDownloaded(true);
+    }
+    window.open(doc.driveLink, '_blank');
+  };
 
   const isNew = new Date().getTime() - new Date(doc.createdAt).getTime() < 7 * 24 * 60 * 60 * 1000;
   const isHot = doc.title.toLowerCase().includes('đề thi') || doc.title.toLowerCase().includes('chuyên');
@@ -19,6 +37,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ doc }) => {
       case 'specialized': return 'bg-purple-50 text-purple-700 border-purple-100';
       case 'provincial': return 'bg-blue-50 text-blue-700 border-blue-100';
       case 'thematic': return 'bg-emerald-50 text-emerald-700 border-emerald-100';
+      case 'prediction': return 'bg-amber-50 text-amber-700 border-amber-100';
       default: return 'bg-slate-50 text-slate-700 border-slate-100';
     }
   };
@@ -32,6 +51,12 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ doc }) => {
       <Card className="overflow-hidden group cursor-pointer border-none shadow-sm hover:shadow-xl transition-all duration-300 h-full flex flex-col bg-white rounded-2xl relative">
         {/* Badges */}
         <div className="absolute top-3 left-3 z-10 flex flex-col gap-2">
+          {isDownloaded && (
+            <span className="bg-emerald-500 text-white text-[10px] font-bold px-2 py-1 rounded-md shadow-sm uppercase tracking-wider flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+              Đã tải
+            </span>
+          )}
           {isNew && (
             <span className="bg-amber text-white text-[10px] font-bold px-2 py-1 rounded-md shadow-sm uppercase tracking-wider">
               Mới update
@@ -46,7 +71,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ doc }) => {
 
         <div 
           className="relative aspect-[4/3] bg-slate-100 overflow-hidden"
-          onClick={() => window.open(doc.driveLink, '_blank')}
+          onClick={handleDownload}
         >
           {doc.thumbnailUrl && !imgError ? (
             <img
@@ -70,7 +95,9 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ doc }) => {
         
         <CardContent className="p-5 flex-grow space-y-3">
           <div className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-bold border uppercase tracking-wider ${getCategoryColor(doc.category)}`}>
-            {doc.category === 'specialized' ? 'Trường Chuyên' : doc.category === 'provincial' ? 'Trường Sở' : 'Chuyên đề'}
+            {doc.category === 'specialized' ? 'Trường Chuyên' : 
+             doc.category === 'provincial' ? 'Trường Sở' : 
+             doc.category === 'prediction' ? 'Phát triển & Dự đoán' : 'Chuyên đề'}
           </div>
           
           <div className="space-y-1">
