@@ -7,9 +7,10 @@
       "properties": {
         "id": { "type": "string" },
         "title": { "type": "string" },
+        "author": { "type": "string" },
         "driveLink": { "type": "string" },
         "thumbnailUrl": { "type": "string" },
-        "category": { "type": "string", "enum": ["latest", "provincial", "specialized", "thematic", "placeholder"] },
+        "category": { "type": "string", "enum": ["latest", "provincial", "specialized", "thematic", "prediction", "placeholder"] },
         "createdAt": { "type": "number" },
         "updatedAt": { "type": "number" },
         "description": { "type": "string" }
