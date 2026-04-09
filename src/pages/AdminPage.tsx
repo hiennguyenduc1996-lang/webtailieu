@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Category, Document } from '@/src/types';
+import { motion } from 'motion/react';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -223,6 +224,49 @@ export default function AdminPage() {
 
     return result;
   }, [documents, searchTerm, sortBy]);
+
+  const prefixStats = React.useMemo(() => {
+    const matchPrefix = searchTerm.match(/^([a-zA-Z]+):/i);
+    if (!matchPrefix) return null;
+
+    const prefix = matchPrefix[1].toUpperCase();
+    const relatedDocs = documents.filter(doc => 
+      doc.title.toUpperCase().includes(prefix)
+    );
+
+    const numbers: number[] = [];
+    relatedDocs.forEach(doc => {
+      // Regex thông minh hơn: 
+      // 1. Tìm tiền tố (ví dụ VDTS)
+      // 2. Bỏ qua phần năm 4 chữ số nếu có dấu ngăn cách phía sau (ví dụ 2026.)
+      // 3. Bắt lấy số thứ tự thực sự ở cuối hoặc sau dấu ngăn cách
+      const regex = new RegExp(`${prefix}(?:\\s*\\d{4}[^\\d]+)?(\\d+)`, 'i');
+      const match = doc.title.match(regex);
+      if (match) {
+        numbers.push(parseInt(match[1]));
+      }
+    });
+
+    if (numbers.length === 0) return { prefix, count: relatedDocs.length, missing: [] };
+
+    const min = Math.min(...numbers);
+    const max = Math.max(...numbers);
+    const missing: number[] = [];
+
+    for (let i = min; i <= max; i++) {
+      if (!numbers.includes(i)) {
+        missing.push(i);
+      }
+    }
+
+    return {
+      prefix,
+      count: relatedDocs.length,
+      missing,
+      min,
+      max
+    };
+  }, [documents, searchTerm]);
 
   if (authLoading) {
     return (
@@ -543,6 +587,50 @@ export default function AdminPage() {
           </Button>
         </div>
       </div>
+
+      {prefixStats && (
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8 p-6 bg-amber/10 border border-amber/20 rounded-3xl space-y-4"
+        >
+          <div className="flex items-center gap-3">
+            <div className="bg-amber p-2 rounded-xl">
+              <Search className="h-5 w-5 text-navy" />
+            </div>
+            <div>
+              <h3 className="font-bold text-navy">Phân tích mã đề {prefixStats.prefix}</h3>
+              <p className="text-xs text-slate-600">Hệ thống đang kiểm tra tính liên tục của các mã đề {prefixStats.prefix}</p>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-white p-4 rounded-2xl shadow-sm border border-amber/10">
+              <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-1">Tổng số đề {prefixStats.prefix}</p>
+              <p className="text-2xl font-black text-navy">{prefixStats.count} <span className="text-sm font-medium text-slate-400">tài liệu</span></p>
+            </div>
+            <div className="bg-white p-4 rounded-2xl shadow-sm border border-amber/10">
+              <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-1">Dải mã đề</p>
+              <p className="text-2xl font-black text-navy">
+                {prefixStats.min !== Infinity && prefixStats.min !== undefined ? `${prefixStats.prefix}${prefixStats.min} - ${prefixStats.prefix}${prefixStats.max}` : 'N/A'}
+              </p>
+            </div>
+            <div className="bg-white p-4 rounded-2xl shadow-sm border border-amber/10">
+              <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-1">Tình trạng</p>
+              {prefixStats.missing.length > 0 ? (
+                <p className="text-sm font-bold text-red-500">
+                  Thiếu: {prefixStats.missing.map(n => `${prefixStats.prefix}${n}`).join(', ')}
+                </p>
+              ) : (
+                <p className="text-sm font-bold text-emerald-500 flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  Đầy đủ, liên tục
+                </p>
+              )}
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       <Card className="border-none shadow-xl rounded-3xl overflow-hidden bg-white">
         <CardContent className="p-0">
