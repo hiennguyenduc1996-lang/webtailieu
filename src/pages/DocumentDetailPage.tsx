@@ -57,14 +57,20 @@ export default function DocumentDetailPage() {
   }, [user]);
 
   useEffect(() => {
-    const downloaded = JSON.parse(localStorage.getItem('downloaded_docs') || '[]');
-    if (id && downloaded.includes(id)) {
-      setIsDownloaded(true);
+    try {
+      const downloaded = JSON.parse(localStorage.getItem('downloaded_docs') || '[]');
+      if (id && Array.isArray(downloaded) && downloaded.includes(id)) {
+        setIsDownloaded(true);
+      }
+    } catch (e) {
+      console.error('Error parsing downloaded_docs:', e);
     }
   }, [id]);
 
   useEffect(() => {
-    localStorage.setItem('comment_user_name', userName);
+    if (userName) {
+      localStorage.setItem('comment_user_name', userName);
+    }
   }, [userName]);
 
   const relatedDocs = useMemo(() => {
@@ -76,22 +82,36 @@ export default function DocumentDetailPage() {
   }, [doc, documents]);
 
   const markAsDownloaded = (docId: string) => {
-    const downloaded = JSON.parse(localStorage.getItem('downloaded_docs') || '[]');
-    if (!downloaded.includes(docId)) {
-      downloaded.push(docId);
-      localStorage.setItem('downloaded_docs', JSON.stringify(downloaded));
+    try {
+      const downloaded = JSON.parse(localStorage.getItem('downloaded_docs') || '[]');
+      if (Array.isArray(downloaded) && !downloaded.includes(docId)) {
+        downloaded.push(docId);
+        localStorage.setItem('downloaded_docs', JSON.stringify(downloaded));
+        setIsDownloaded(true);
+      }
+    } catch (e) {
+      console.error('Error accessing localStorage:', e);
+      localStorage.setItem('downloaded_docs', JSON.stringify([docId]));
       setIsDownloaded(true);
     }
   };
 
   useEffect(() => {
-    if (!docsLoading && documents.length > 0) {
-      const found = documents.find(d => d.id === id);
-      if (found) {
-        setDoc(found);
-        // Mark as "viewed/downloaded" when user clicks thumbnail and enters this page
-        markAsDownloaded(found.id);
-      } else {
+    if (!docsLoading) {
+      if (documents.length > 0) {
+        const found = documents.find(d => d.id === id);
+        if (found) {
+          setDoc(found);
+          markAsDownloaded(found.id);
+        } else {
+          toast.error('Không tìm thấy tài liệu');
+          navigate('/');
+        }
+      } else if (id) {
+        // If loading is finished and documents is empty, it might be a slow fetch or empty DB
+        // We'll wait a bit or handle it. For now, if it's empty, we should probably redirect
+        // but only after we are sure the fetch is complete.
+        // useDocuments setLoading(false) is called in onSnapshot, so it's complete.
         toast.error('Không tìm thấy tài liệu');
         navigate('/');
       }
