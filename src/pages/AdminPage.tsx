@@ -34,8 +34,7 @@ const CATEGORY_LABELS: Record<Category, string> = {
   specialized: 'Đề Trường Chuyên',
   thematic: 'Tài liệu Chuyên đề',
   prediction: 'Đề phát triển và Dự đoán',
-  midterm: 'Giữa Kì',
-  final: 'Học Kì',
+  exam: 'Giữa Kì và Học Kì',
   placeholder: 'Mục dự phòng'
 };
 
@@ -54,7 +53,8 @@ export default function AdminPage() {
   const [isRegLoading, setIsRegLoading] = useState(false);
 
   useEffect(() => {
-    if (user && profile?.role === 'admin') {
+    const isAdmin = profile?.role === 'admin' || user?.email?.toLowerCase() === 'hiennguyenduc1996@gmail.com';
+    if (user && isAdmin) {
       fetchRegRequests();
     }
   }, [user, profile]);
@@ -85,11 +85,27 @@ export default function AdminPage() {
 
   const handleRejectRequest = async (id: string) => {
     try {
-      await registrationService.updateRequestStatus(id, 'rejected');
-      toast.success('Đã từ chối yêu cầu');
+      await registrationService.deleteRequest(id);
+      toast.success('Đã xóa yêu cầu đăng ký');
       fetchRegRequests();
     } catch (error) {
       toast.error('Có lỗi xảy ra');
+    }
+  };
+
+  const handleDeleteAllRequests = async () => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa TẤT CẢ yêu cầu đăng ký không?')) return;
+    
+    setIsRegLoading(true);
+    try {
+      const promises = regRequests.map(req => registrationService.deleteRequest(req.id));
+      await Promise.all(promises);
+      toast.success('Đã xóa tất cả yêu cầu đăng ký');
+      fetchRegRequests();
+    } catch (error) {
+      toast.error('Có lỗi xảy ra khi xóa');
+    } finally {
+      setIsRegLoading(false);
     }
   };
 
@@ -385,18 +401,24 @@ export default function AdminPage() {
             />
           </div>
           
-          <div className="flex items-center p-1 bg-white rounded-xl shadow-sm border">
+          <div className="flex items-center p-1 bg-slate-100 rounded-xl border border-slate-200 shadow-inner">
             <button 
               onClick={() => setSortBy('newest')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${sortBy === 'newest' ? 'bg-navy text-white' : 'text-muted-foreground hover:bg-slate-50'}`}
+              className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${sortBy === 'newest' ? 'bg-white text-navy shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
             >
               Mới nhất
             </button>
             <button 
-              onClick={() => setSortBy('az')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${sortBy === 'az' ? 'bg-navy text-white' : 'text-muted-foreground hover:bg-slate-50'}`}
+              onClick={() => setSortBy('oldest')}
+              className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${sortBy === 'oldest' ? 'bg-white text-navy shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
             >
-              A-Z
+              Cũ nhất
+            </button>
+            <button 
+              onClick={() => setSortBy('az')}
+              className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${sortBy === 'az' ? 'bg-white text-navy shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+            >
+              Tên A-Z
             </button>
           </div>
 
@@ -500,8 +522,7 @@ export default function AdminPage() {
                           <option value="specialized">Đề Trường Chuyên</option>
                           <option value="thematic">Tài liệu Chuyên đề</option>
                           <option value="prediction">Đề phát triển và Dự đoán</option>
-                          <option value="midterm">Giữa Kì</option>
-                          <option value="final">Học Kì</option>
+                          <option value="exam">Giữa Kì và Học Kì</option>
                           <option value="placeholder">Mục dự phòng</option>
                         </select>
                       </div>
@@ -533,8 +554,7 @@ export default function AdminPage() {
                           <option value="specialized">Đề Trường Chuyên</option>
                           <option value="thematic">Tài liệu Chuyên đề</option>
                           <option value="prediction">Đề phát triển và Dự đoán</option>
-                          <option value="midterm">Giữa Kì</option>
-                          <option value="final">Học Kì</option>
+                          <option value="exam">Giữa Kì và Học Kì</option>
                         </select>
                       </div>
                       <Button 
@@ -780,12 +800,27 @@ export default function AdminPage() {
             </TabsContent>
 
             <TabsContent value="requests" className="m-0">
+              <div className="p-4 bg-slate-50/50 border-b flex justify-between items-center">
+                <div className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                  Danh sách yêu cầu ({regRequests.length})
+                </div>
+                {regRequests.length > 0 && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="text-red-500 hover:text-red-600 hover:bg-red-50 font-bold text-xs rounded-lg"
+                    onClick={handleDeleteAllRequests}
+                  >
+                    <Trash2 className="h-3.5 w-3.5 mr-2" /> Xóa tất cả
+                  </Button>
+                )}
+              </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left">
                   <thead className="text-[10px] text-slate-400 uppercase tracking-widest font-bold bg-slate-50/50 border-b">
                     <tr>
                       <th className="px-8 py-5">Họ và Tên</th>
-                      <th className="px-8 py-5">Tên tài khoản / Email</th>
+                      <th className="px-8 py-5">Tên tài khoản</th>
                       <th className="px-8 py-5">Ngày yêu cầu</th>
                       <th className="px-8 py-5">Trạng thái</th>
                       <th className="px-8 py-5 text-right">Hành động</th>
@@ -804,7 +839,6 @@ export default function AdminPage() {
                           <td className="px-8 py-5 font-bold text-navy">{req.fullName}</td>
                           <td className="px-8 py-5 text-slate-600">
                             <div>{req.username}</div>
-                            <div className="text-[10px] text-slate-400">{req.email}</div>
                           </td>
                           <td className="px-8 py-5 text-slate-500">{new Date(req.createdAt).toLocaleDateString('vi-VN')}</td>
                           <td className="px-8 py-5">

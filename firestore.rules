@@ -60,7 +60,7 @@ service cloud.firestore {
              data.keys().hasOnly(allowedFields) &&
              data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
              isValidUrl(data.driveLink) &&
-             data.category in ['latest', 'provincial', 'specialized', 'thematic', 'prediction', 'midterm', 'final', 'placeholder'] &&
+             data.category in ['latest', 'provincial', 'specialized', 'thematic', 'prediction', 'exam', 'placeholder'] &&
              data.createdAt is number &&
              data.updatedAt is number &&
              (!('author' in data) || (data.author is string && data.author.size() <= 100)) &&
@@ -84,8 +84,7 @@ service cloud.firestore {
     }
 
     function isValidRegistrationRequest(data) {
-      return data.keys().hasAll(['fullName', 'username', 'email', 'status', 'createdAt']) &&
-             isValidEmail(data.email) &&
+      return data.keys().hasAll(['fullName', 'username', 'status', 'createdAt']) &&
              data.status == 'pending';
     }
 

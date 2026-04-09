@@ -1,4 +1,4 @@
-export type Category = 'latest' | 'provincial' | 'specialized' | 'thematic' | 'prediction' | 'midterm' | 'final' | 'placeholder';
+export type Category = 'latest' | 'provincial' | 'specialized' | 'thematic' | 'prediction' | 'exam' | 'placeholder';
 
 export interface Document {
   id: string;
@@ -33,8 +33,7 @@ export interface Comment {
 export interface RegistrationRequest {
   id: string;
   fullName: string;
-  username: string; // This will be the email for Firebase Auth
-  email: string;
+  username: string;
   status: 'pending' | 'approved' | 'rejected';
   createdAt: number;
 }

@@ -34,8 +34,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ doc }) => {
       case 'provincial': return 'bg-blue-50 text-blue-700 border-blue-100';
       case 'thematic': return 'bg-emerald-50 text-emerald-700 border-emerald-100';
       case 'prediction': return 'bg-amber-50 text-amber-700 border-amber-100';
-      case 'midterm': return 'bg-orange-50 text-orange-700 border-orange-100';
-      case 'final': return 'bg-indigo-50 text-indigo-700 border-indigo-100';
+      case 'exam': return 'bg-orange-50 text-orange-700 border-orange-100';
       default: return 'bg-slate-50 text-slate-700 border-slate-100';
     }
   };
@@ -45,8 +44,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ doc }) => {
       case 'specialized': return 'Trường Chuyên';
       case 'provincial': return 'Trường Sở';
       case 'prediction': return 'Phát triển & Dự đoán';
-      case 'midterm': return 'Giữa Kì';
-      case 'final': return 'Học Kì';
+      case 'exam': return 'Giữa Kì và Học Kì';
       default: return 'Chuyên đề';
     }
   };

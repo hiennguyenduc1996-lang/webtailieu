@@ -50,8 +50,7 @@ export default function HomePage() {
       specialized: documents.filter(d => d.category === 'specialized').length,
       thematic: documents.filter(d => d.category === 'thematic').length,
       prediction: documents.filter(d => d.category === 'prediction').length,
-      midterm: documents.filter(d => d.category === 'midterm').length,
-      final: documents.filter(d => d.category === 'final').length,
+      exam: documents.filter(d => d.category === 'exam').length,
     };
   }, [documents]);
 
@@ -110,31 +109,28 @@ export default function HomePage() {
               <TabsTrigger value="prediction" className="rounded-xl px-8 py-3.5 text-base font-bold transition-all duration-300 data-[state=active]:bg-navy data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:scale-105 flex items-center gap-3 group">
                 Phát triển & Dự đoán <span className="text-xs opacity-60 font-bold bg-white/20 px-2 py-0.5 rounded-full">{counts.prediction}</span>
               </TabsTrigger>
-              <TabsTrigger value="midterm" className="rounded-xl px-8 py-3.5 text-base font-bold transition-all duration-300 data-[state=active]:bg-navy data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:scale-105 flex items-center gap-3 group">
-                Giữa Kì <span className="text-xs opacity-60 font-bold bg-white/20 px-2 py-0.5 rounded-full">{counts.midterm}</span>
-              </TabsTrigger>
-              <TabsTrigger value="final" className="rounded-xl px-8 py-3.5 text-base font-bold transition-all duration-300 data-[state=active]:bg-navy data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:scale-105 flex items-center gap-3 group">
-                Học Kì <span className="text-xs opacity-60 font-bold bg-white/20 px-2 py-0.5 rounded-full">{counts.final}</span>
+              <TabsTrigger value="exam" className="rounded-xl px-8 py-3.5 text-base font-bold transition-all duration-300 data-[state=active]:bg-navy data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:scale-105 flex items-center gap-3 group">
+                Giữa Kì và Học Kì <span className="text-xs opacity-60 font-bold bg-white/20 px-2 py-0.5 rounded-full">{counts.exam}</span>
               </TabsTrigger>
             </TabsList>
           </Tabs>
 
-          <div className="flex items-center p-1 bg-white rounded-xl shadow-sm border">
+          <div className="flex items-center p-1 bg-slate-100 rounded-xl border border-slate-200 shadow-inner">
             <button 
               onClick={() => setSortBy('newest')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${sortBy === 'newest' ? 'bg-navy text-white' : 'text-muted-foreground hover:bg-slate-50'}`}
+              className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${sortBy === 'newest' ? 'bg-white text-navy shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
             >
               Mới nhất
             </button>
             <button 
               onClick={() => setSortBy('oldest')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${sortBy === 'oldest' ? 'bg-navy text-white' : 'text-muted-foreground hover:bg-slate-50'}`}
+              className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${sortBy === 'oldest' ? 'bg-white text-navy shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
             >
               Cũ nhất
             </button>
             <button 
               onClick={() => setSortBy('az')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${sortBy === 'az' ? 'bg-navy text-white' : 'text-muted-foreground hover:bg-slate-50'}`}
+              className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${sortBy === 'az' ? 'bg-white text-navy shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
             >
               Tên A-Z
             </button>

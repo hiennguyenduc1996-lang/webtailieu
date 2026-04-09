@@ -17,7 +17,6 @@ export default function RegisterPage() {
     username: '',
     password: '',
     confirmPassword: '',
-    email: '',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -33,7 +32,6 @@ export default function RegisterPage() {
       await registrationService.createRequest({
         fullName: formData.fullName,
         username: formData.username,
-        email: formData.email || `${formData.username}@nk12.vn`, // Fallback email if not provided
       });
       setIsSubmitted(true);
       toast.success('Gửi yêu cầu đăng ký thành công');
@@ -114,16 +112,6 @@ export default function RegisterPage() {
                   value={formData.username}
                   onChange={(e) => setFormData({...formData, username: e.target.value})}
                   required
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-navy uppercase tracking-wider">Email (không bắt buộc)</label>
-                <Input 
-                  type="email"
-                  placeholder="email@example.com" 
-                  className="h-12 rounded-xl border-slate-200 focus:border-amber focus:ring-amber"
-                  value={formData.email}
-                  onChange={(e) => setFormData({...formData, email: e.target.value})}
                 />
               </div>
               <div className="space-y-2">

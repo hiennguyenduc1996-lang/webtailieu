@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useDocuments } from '@/src/hooks/useDocuments';
 import { useAuth } from '@/src/hooks/useAuth';
 import { commentService } from '@/src/services/commentService';
 import { Document, Comment } from '@/src/types';
+import DocumentCard from '@/src/components/documents/DocumentCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -31,6 +32,14 @@ export default function DocumentDetailPage() {
   const [newComment, setNewComment] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const relatedDocs = useMemo(() => {
+    if (!doc || !documents.length) return [];
+    return documents
+      .filter(d => d.category === doc.category && d.id !== doc.id)
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .slice(0, 5);
+  }, [doc, documents]);
 
   useEffect(() => {
     if (!docsLoading && documents.length > 0) {
@@ -82,8 +91,20 @@ export default function DocumentDetailPage() {
   };
 
   const getEmbedLink = (link: string) => {
-    if (link.includes('drive.google.com')) {
-      return link.replace(/\/view\?usp=sharing|\/view/, '/preview');
+    const driveIdRegex = /(?:id=|\/d\/|folders\/|file\/d\/)([a-zA-Z0-9-_]{25,})/;
+    const match = link.match(driveIdRegex);
+    if (match && match[1]) {
+      const fileId = match[1];
+      return `https://drive.google.com/file/d/${fileId}/preview`;
+    }
+    return link;
+  };
+
+  const getDownloadLink = (link: string) => {
+    const driveIdRegex = /(?:id=|\/d\/|folders\/|file\/d\/)([a-zA-Z0-9-_]{25,})/;
+    const match = link.match(driveIdRegex);
+    if (match && match[1]) {
+      return `https://drive.google.com/uc?id=${match[1]}&export=download`;
     }
     return link;
   };
@@ -115,7 +136,7 @@ export default function DocumentDetailPage() {
         </div>
 
         {/* Document Viewer */}
-        <Card className="border-none shadow-2xl rounded-3xl overflow-hidden bg-slate-900 aspect-[3/4] md:aspect-video relative group">
+        <Card className="border-none shadow-2xl rounded-3xl overflow-hidden bg-slate-900 aspect-[3/4] md:aspect-[4/5.5] relative group">
           <iframe 
             src={getEmbedLink(doc.driveLink)} 
             className="w-full h-full border-none"
@@ -132,7 +153,7 @@ export default function DocumentDetailPage() {
 
         {/* Quick Actions */}
         <div className="flex justify-center">
-          <a href={doc.driveLink} target="_blank" rel="noreferrer" className="w-full sm:w-auto">
+          <a href={getDownloadLink(doc.driveLink)} target="_blank" rel="noreferrer" className="w-full sm:w-auto">
             <Button className="w-full sm:w-auto h-14 px-12 bg-amber hover:bg-amber/90 text-navy font-black text-lg rounded-2xl shadow-xl shadow-amber/20 gap-3 transition-all hover:scale-105 active:scale-95">
               <Download className="h-6 w-6" /> Tải đề thi ngay
             </Button>
@@ -252,6 +273,23 @@ export default function DocumentDetailPage() {
             )}
           </div>
         </div>
+
+        {/* Related Documents */}
+        {relatedDocs.length > 0 && (
+          <div className="pt-16 space-y-8">
+            <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+              <div className="bg-amber p-2 rounded-xl">
+                <ExternalLink className="h-5 w-5 text-navy" />
+              </div>
+              <h2 className="text-xl font-bold text-navy">Tài liệu cùng thể loại mới nhất</h2>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+              {relatedDocs.map((rd) => (
+                <DocumentCard key={rd.id} doc={rd} />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
