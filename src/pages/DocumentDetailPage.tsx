@@ -42,6 +42,7 @@ export default function DocumentDetailPage() {
   const [imageUrl, setImageUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isProcessingImage, setIsProcessingImage] = useState(false);
+  const [isDownloaded, setIsDownloaded] = useState(false);
   const [userName, setUserName] = useState(() => {
     const saved = localStorage.getItem('comment_user_name');
     if (saved) return saved;
@@ -56,6 +57,13 @@ export default function DocumentDetailPage() {
   }, [user]);
 
   useEffect(() => {
+    const downloaded = JSON.parse(localStorage.getItem('downloaded_docs') || '[]');
+    if (id && downloaded.includes(id)) {
+      setIsDownloaded(true);
+    }
+  }, [id]);
+
+  useEffect(() => {
     localStorage.setItem('comment_user_name', userName);
   }, [userName]);
 
@@ -67,17 +75,34 @@ export default function DocumentDetailPage() {
       .slice(0, 5);
   }, [doc, documents]);
 
+  const markAsDownloaded = (docId: string) => {
+    const downloaded = JSON.parse(localStorage.getItem('downloaded_docs') || '[]');
+    if (!downloaded.includes(docId)) {
+      downloaded.push(docId);
+      localStorage.setItem('downloaded_docs', JSON.stringify(downloaded));
+      setIsDownloaded(true);
+    }
+  };
+
   useEffect(() => {
     if (!docsLoading && documents.length > 0) {
       const found = documents.find(d => d.id === id);
       if (found) {
         setDoc(found);
+        // Mark as "viewed/downloaded" when user clicks thumbnail and enters this page
+        markAsDownloaded(found.id);
       } else {
         toast.error('Không tìm thấy tài liệu');
         navigate('/');
       }
     }
   }, [id, documents, docsLoading, navigate]);
+
+  const handleDownloadClick = () => {
+    if (doc) {
+      markAsDownloaded(doc.id);
+    }
+  };
 
   useEffect(() => {
     if (id) {
@@ -214,8 +239,16 @@ export default function DocumentDetailPage() {
 
       <div className="space-y-8">
         {/* Header Info */}
-        <div className="space-y-2">
-          <h1 className="text-2xl md:text-4xl font-black text-navy leading-tight">{doc.title}</h1>
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-2xl md:text-4xl font-black text-navy leading-tight">{doc.title}</h1>
+            {isDownloaded && (
+              <span className="bg-emerald-500 text-white text-[10px] font-bold px-3 py-1.5 rounded-full shadow-lg uppercase tracking-wider flex items-center gap-2 animate-in fade-in zoom-in duration-500">
+                <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                Đã tải
+              </span>
+            )}
+          </div>
           {doc.author && (
             <p className="text-slate-500 font-medium flex items-center gap-2">
               <User className="h-4 w-4" /> {doc.author}
@@ -231,7 +264,7 @@ export default function DocumentDetailPage() {
             allow="autoplay"
           />
           <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-            <a href={doc.driveLink} target="_blank" rel="noreferrer">
+            <a href={doc.driveLink} target="_blank" rel="noreferrer" onClick={handleDownloadClick}>
               <Button size="sm" className="bg-white/90 hover:bg-white text-navy font-bold rounded-xl shadow-lg">
                 <ExternalLink className="h-4 w-4 mr-2" /> Mở trong Drive
               </Button>
@@ -241,7 +274,7 @@ export default function DocumentDetailPage() {
 
         {/* Quick Actions */}
         <div className="flex justify-center">
-          <a href={getDownloadLink(doc.driveLink)} target="_blank" rel="noreferrer" className="w-full sm:w-auto">
+          <a href={getDownloadLink(doc.driveLink)} target="_blank" rel="noreferrer" className="w-full sm:w-auto" onClick={handleDownloadClick}>
             <Button className="w-full sm:w-auto h-14 px-12 bg-amber hover:bg-amber/90 text-navy font-black text-lg rounded-2xl shadow-xl shadow-amber/20 gap-3 transition-all hover:scale-105 active:scale-95">
               <Download className="h-6 w-6" /> Tải đề thi ngay
             </Button>
