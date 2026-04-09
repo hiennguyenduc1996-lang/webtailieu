@@ -1,0 +1,41 @@
+{
+  "entities": {
+    "Document": {
+      "title": "Document",
+      "description": "A study document or exam paper",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "driveLink": { "type": "string" },
+        "thumbnailUrl": { "type": "string" },
+        "category": { "type": "string", "enum": ["latest", "provincial", "specialized", "thematic", "placeholder"] },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" },
+        "description": { "type": "string" }
+      },
+      "required": ["title", "driveLink", "category", "createdAt", "updatedAt"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile data",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "user"] }
+      },
+      "required": ["uid", "email", "role"]
+    }
+  },
+  "firestore": {
+    "/documents/{docId}": {
+      "schema": "Document",
+      "description": "Collection of documents"
+    },
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Collection of user profiles"
+    }
+  }
+}
