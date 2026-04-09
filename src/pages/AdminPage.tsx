@@ -117,6 +117,17 @@ export default function AdminPage() {
         thumbnailUrl: formData.thumbnailUrl || autoThumbnail
       };
 
+      // Check for duplicate title
+      const isDuplicate = documents.some(doc => 
+        doc.title.toLowerCase().trim() === finalData.title.toLowerCase().trim() && 
+        doc.id !== editingDoc
+      );
+
+      if (isDuplicate) {
+        toast.error(`Tài liệu "${finalData.title}" đã tồn tại trên hệ thống!`);
+        return;
+      }
+
       if (editingDoc) {
         await documentService.updateDocument(editingDoc, finalData);
         toast.success('Cập nhật tài liệu thành công');
@@ -489,6 +500,16 @@ export default function AdminPage() {
                                     title = `Tài liệu mới ${new Date().toLocaleDateString()}`;
                                   }
                                 }
+                              }
+
+                              // Check for duplicate title in bulk upload
+                              const isDuplicate = documents.some(doc => 
+                                doc.title.toLowerCase().trim() === title.toLowerCase().trim()
+                              );
+
+                              if (isDuplicate) {
+                                console.warn(`Skipping duplicate: ${title}`);
+                                continue; // Skip this document if title already exists
                               }
 
                               await documentService.addDocument({

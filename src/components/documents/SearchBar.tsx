@@ -12,6 +12,7 @@ interface SearchBarProps {
 
 export default function SearchBar({ value, onChange }: SearchBarProps) {
   const [results, setResults] = useState<Document[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [showDropdown, setShowDropdown] = useState(false);
   const [allDocs, setAllDocs] = useState<Document[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -29,11 +30,13 @@ export default function SearchBar({ value, onChange }: SearchBarProps) {
       const filtered = allDocs.filter(doc => 
         doc.title.toLowerCase().includes(value.toLowerCase()) ||
         (doc.author && doc.author.toLowerCase().includes(value.toLowerCase()))
-      ).slice(0, 5);
-      setResults(filtered);
+      );
+      setTotalCount(filtered.length);
+      setResults(filtered.slice(0, 5));
       setShowDropdown(true);
     } else {
       setResults([]);
+      setTotalCount(0);
       setShowDropdown(false);
     }
   }, [value, allDocs]);
@@ -49,7 +52,7 @@ export default function SearchBar({ value, onChange }: SearchBarProps) {
   }, []);
 
   return (
-    <div className="relative w-full max-w-2xl mx-auto" ref={dropdownRef}>
+    <div className="relative w-full max-w-2xl mx-auto z-[100]" ref={dropdownRef}>
       <div className="relative group">
         <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-navy group-focus-within:text-amber transition-colors z-10" />
         <Input
@@ -60,6 +63,18 @@ export default function SearchBar({ value, onChange }: SearchBarProps) {
           onChange={(e) => onChange(e.target.value)}
           onFocus={() => value.trim().length > 1 && setShowDropdown(true)}
         />
+        <AnimatePresence>
+          {value.trim().length > 1 && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              className="absolute right-4 top-1/2 -translate-y-1/2 bg-slate-100 px-2 py-1 rounded-lg text-[10px] font-bold text-navy shadow-sm z-20"
+            >
+              {totalCount} kết quả
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       <AnimatePresence>
@@ -68,7 +83,7 @@ export default function SearchBar({ value, onChange }: SearchBarProps) {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-50"
+            className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-[110]"
           >
             <div className="p-2">
               {results.map((doc) => (
