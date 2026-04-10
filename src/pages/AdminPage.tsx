@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { LogIn, Plus, Trash2, Edit, Loader2, Save, X, ExternalLink, Search, ArrowUpDown, User, Lock, Bell } from 'lucide-react';
 import { auth, db } from '@/src/lib/firebase';
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { collection, addDoc, deleteDoc, doc, onSnapshot } from 'firebase/firestore';
+import { collection, addDoc, deleteDoc, doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { useAuth } from '@/src/hooks/useAuth';
 import { useDocuments } from '@/src/hooks/useDocuments';
 import { documentService } from '@/src/services/documentService';
@@ -90,10 +90,31 @@ export default function AdminPage() {
     return () => unsubscribe();
   }, []);
 
+  const [editingNotification, setEditingNotification] = useState<{id: string, text: string} | null>(null);
+
+  const handleUpdateNotification = async () => {
+    if (!editingNotification || !editingNotification.text.trim()) return;
+    try {
+      const originalNote = notifications.find(n => n.id === editingNotification.id);
+      await setDoc(doc(db, 'notifications', editingNotification.id), { 
+        text: editingNotification.text.toUpperCase(),
+        order: originalNote?.order ?? 0
+      });
+      setEditingNotification(null);
+      toast.success('Đã cập nhật thông báo');
+    } catch (error) {
+      console.error(error);
+      toast.error('Lỗi khi cập nhật thông báo');
+    }
+  };
+
   const handleAddNotification = async () => {
     if (!newNotification.trim()) return;
     try {
-      await addDoc(collection(db, 'notifications'), { text: newNotification });
+      await addDoc(collection(db, 'notifications'), { 
+        text: newNotification.toUpperCase(),
+        order: notifications.length 
+      });
       setNewNotification('');
       toast.success('Đã thêm thông báo');
     } catch (error) {
@@ -107,6 +128,27 @@ export default function AdminPage() {
       toast.success('Đã xóa thông báo');
     } catch (error) {
       toast.error('Lỗi khi xóa thông báo');
+    }
+  };
+
+  const moveNotification = async (index: number, direction: 'up' | 'down') => {
+    const newNotifications = [...notifications];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    
+    if (targetIndex < 0 || targetIndex >= newNotifications.length) return;
+
+    // Swap
+    [newNotifications[index], newNotifications[targetIndex]] = [newNotifications[targetIndex], newNotifications[index]];
+    setNotifications(newNotifications);
+
+    // Update order in Firestore (simplified: update all orders)
+    try {
+      await Promise.all(newNotifications.map((note, i) => 
+        setDoc(doc(db, 'notifications', note.id), { text: note.text, order: i })
+      ));
+      toast.success('Đã cập nhật thứ tự');
+    } catch (error) {
+      toast.error('Lỗi khi cập nhật thứ tự');
     }
   };
 
@@ -711,12 +753,37 @@ export default function AdminPage() {
             </Button>
           </div>
           <div className="space-y-2">
-            {notifications.map(note => (
+            {notifications.map((note, index) => (
               <div key={note.id} className="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-100">
-                <span className="text-sm text-navy font-medium">{note.text}</span>
-                <Button variant="ghost" size="icon" onClick={() => handleDeleteNotification(note.id)} className="text-red-500 hover:text-red-600 hover:bg-red-50">
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                {editingNotification?.id === note.id ? (
+                  <div className="flex gap-2 flex-grow">
+                    <Input 
+                      value={editingNotification.text}
+                      onChange={(e) => setEditingNotification({...editingNotification, text: e.target.value})}
+                      className="h-8"
+                    />
+                    <Button onClick={handleUpdateNotification} size="sm" className="h-8">Lưu</Button>
+                    <Button onClick={() => setEditingNotification(null)} size="sm" variant="ghost" className="h-8">Hủy</Button>
+                  </div>
+                ) : (
+                  <>
+                    <span className="text-sm text-navy font-medium">{note.text}</span>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => setEditingNotification(note)} className="h-8 w-8">
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => moveNotification(index, 'up')} disabled={index === 0} className="h-8 w-8">
+                        ↑
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => moveNotification(index, 'down')} disabled={index === notifications.length - 1} className="h-8 w-8">
+                        ↓
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleDeleteNotification(note.id)} className="text-red-500 hover:text-red-600 hover:bg-red-50 h-8 w-8">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </>
+                )}
               </div>
             ))}
           </div>

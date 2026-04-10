@@ -7,12 +7,12 @@ export default function Ticker() {
   if (notifications.length === 0) return null;
 
   return (
-    <div className="bg-amber text-navy py-2 overflow-hidden whitespace-nowrap flex items-center">
-      <div className="inline-block animate-marquee flex items-center">
+    <div className="bg-amber text-navy py-2 overflow-hidden whitespace-nowrap">
+      <div className="inline-block animate-marquee">
         {notifications.map((note, index) => (
-          <span key={index} className="mx-8 font-bold text-sm flex items-center gap-2">
+          <span key={note.id} className="mx-8 font-bold text-sm inline-flex items-center gap-2">
             <Bell className="h-4 w-4" />
-            {note}
+            <span className="font-bold">THÔNG BÁO {index + 1}.</span> {note.text}
           </span>
         ))}
       </div>
