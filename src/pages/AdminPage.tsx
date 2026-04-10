@@ -3,9 +3,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { LogIn, Plus, Trash2, Edit, Loader2, Save, X, ExternalLink, Search, ArrowUpDown, User, Lock } from 'lucide-react';
-import { auth } from '@/src/lib/firebase';
+import { LogIn, Plus, Trash2, Edit, Loader2, Save, X, ExternalLink, Search, ArrowUpDown, User, Lock, Bell } from 'lucide-react';
+import { auth, db } from '@/src/lib/firebase';
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { collection, addDoc, deleteDoc, doc, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '@/src/hooks/useAuth';
 import { useDocuments } from '@/src/hooks/useDocuments';
 import { documentService } from '@/src/services/documentService';
@@ -79,6 +80,35 @@ export default function AdminPage() {
   };
 
   const [isExtracting, setIsExtracting] = useState(false);
+  const [notifications, setNotifications] = useState<{id: string, text: string}[]>([]);
+  const [newNotification, setNewNotification] = useState('');
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, 'notifications'), (snapshot) => {
+      setNotifications(snapshot.docs.map(doc => ({ id: doc.id, text: doc.data().text })));
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleAddNotification = async () => {
+    if (!newNotification.trim()) return;
+    try {
+      await addDoc(collection(db, 'notifications'), { text: newNotification });
+      setNewNotification('');
+      toast.success('Đã thêm thông báo');
+    } catch (error) {
+      toast.error('Lỗi khi thêm thông báo');
+    }
+  };
+
+  const handleDeleteNotification = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, 'notifications', id));
+      toast.success('Đã xóa thông báo');
+    } catch (error) {
+      toast.error('Lỗi khi xóa thông báo');
+    }
+  };
 
   const handleExtractTitle = async () => {
     if (!formData.driveLink) {
@@ -660,6 +690,38 @@ export default function AdminPage() {
           </div>
         </motion.div>
       )}
+
+      <Card className="border-none shadow-xl rounded-3xl overflow-hidden bg-white mb-12">
+        <CardHeader className="bg-navy p-6 text-white flex flex-row items-center justify-between">
+          <CardTitle className="text-xl font-bold flex items-center gap-2">
+            <Bell className="h-5 w-5 text-amber" />
+            Quản lý thông báo chạy ngang
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-6 space-y-4">
+          <div className="flex gap-2">
+            <Input 
+              placeholder="Nhập thông báo mới..."
+              value={newNotification}
+              onChange={(e) => setNewNotification(e.target.value)}
+              className="rounded-xl border-slate-200"
+            />
+            <Button onClick={handleAddNotification} className="bg-amber hover:bg-amber/90 text-navy rounded-xl font-bold">
+              <Plus className="mr-2 h-4 w-4" /> Thêm
+            </Button>
+          </div>
+          <div className="space-y-2">
+            {notifications.map(note => (
+              <div key={note.id} className="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <span className="text-sm text-navy font-medium">{note.text}</span>
+                <Button variant="ghost" size="icon" onClick={() => handleDeleteNotification(note.id)} className="text-red-500 hover:text-red-600 hover:bg-red-50">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
       <Card className="border-none shadow-xl rounded-3xl overflow-hidden bg-white">
         <CardContent className="p-0">

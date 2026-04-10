@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import SearchBar from '@/src/components/documents/SearchBar';
 import DocumentCard from '@/src/components/documents/DocumentCard';
 import CountdownTimer from '@/src/components/documents/CountdownTimer';
+import Ticker from '@/src/components/common/Ticker';
 import { Category } from '@/src/types';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
@@ -82,6 +83,7 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+      <Ticker />
 
       <div className="container mx-auto px-4 py-12">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 mb-16">
