@@ -6,6 +6,10 @@ import AdminPage from '@/src/pages/AdminPage';
 import LoginPage from '@/src/pages/LoginPage';
 import LatestDocumentsPage from '@/src/pages/LatestDocumentsPage';
 import DocumentDetailPage from '@/src/pages/DocumentDetailPage';
+import OnlineExamPage from '@/src/pages/OnlineExamPage';
+import TeacherDashboard from '@/src/pages/TeacherDashboard';
+import StudentDashboard from '@/src/pages/StudentDashboard';
+import PreviewExamPage from '@/src/pages/PreviewExamPage';
 import { Toaster } from '@/components/ui/sonner';
 import { ErrorBoundary } from '@/src/components/common/ErrorBoundary';
 
@@ -22,6 +26,10 @@ export default function App() {
               <Route path="/category/:category" element={<HomePage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/admin" element={<AdminPage />} />
+              <Route path="/thi-online" element={<OnlineExamPage />} />
+              <Route path="/thi-online/teacher" element={<TeacherDashboard />} />
+              <Route path="/thi-online/student" element={<StudentDashboard />} />
+              <Route path="/preview-exam/:examId" element={<PreviewExamPage />} />
               <Route path="/document/:id" element={<DocumentDetailPage />} />
             </Routes>
           </main>

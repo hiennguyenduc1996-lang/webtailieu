@@ -77,6 +77,12 @@ export default function HomePage() {
 
             <CountdownTimer />
             
+            <div className="flex justify-center gap-4">
+              <Link to="/thi-online" className="bg-amber text-navy px-6 py-2 rounded-lg font-bold hover:bg-amber/90 transition-colors">
+                Thi Online
+              </Link>
+            </div>
+            
             <div className="max-w-xl mx-auto">
               <SearchBar value={search} onChange={setSearch} />
             </div>

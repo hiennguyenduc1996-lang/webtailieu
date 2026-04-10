@@ -29,6 +29,7 @@ export default function Navbar() {
   };
 
   const navLinks = [
+    { name: 'Thi Online', href: '/thi-online' },
     { name: 'Tài liệu mới', href: '/latest' },
     { name: 'Đề Trường Sở', href: '/category/provincial' },
     { name: 'Đề Trường Chuyên', href: '/category/specialized' },

@@ -80,12 +80,12 @@ export default function AdminPage() {
   };
 
   const [isExtracting, setIsExtracting] = useState(false);
-  const [notifications, setNotifications] = useState<{id: string, text: string}[]>([]);
+  const [notifications, setNotifications] = useState<{id: string, text: string, order: number}[]>([]);
   const [newNotification, setNewNotification] = useState('');
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, 'notifications'), (snapshot) => {
-      setNotifications(snapshot.docs.map(doc => ({ id: doc.id, text: doc.data().text })));
+      setNotifications(snapshot.docs.map(doc => ({ id: doc.id, text: doc.data().text, order: doc.data().order || 0 })));
     });
     return () => unsubscribe();
   }, []);

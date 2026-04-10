@@ -1,0 +1,264 @@
+import React, { useEffect, useState, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { doc, getDoc, collection, addDoc } from 'firebase/firestore';
+import { db } from '@/src/lib/firebase';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
+import { Clock, Send, ExternalLink, AlertTriangle } from 'lucide-react';
+
+interface Exam {
+  id: string;
+  title: string;
+  pdfUrl: string;
+  duration: number;
+  answers: string[];
+  questionCount: number;
+}
+
+export default function PreviewExamPage() {
+  const { examId } = useParams<{ examId: string }>();
+  const navigate = useNavigate();
+  const [exam, setExam] = useState<Exam | null>(null);
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  const [studentAnswers, setStudentAnswers] = useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasSubmitted, setHasSubmitted] = useState(false);
+  const [score, setScore] = useState<number | null>(null);
+  const [tabSwitchCount, setTabSwitchCount] = useState(0);
+  
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    const fetchExam = async () => {
+      if (!examId) return;
+      const docRef = doc(db, 'exams', examId);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const data = docSnap.data() as Exam;
+        setExam({ id: docSnap.id, ...data });
+        setTimeLeft(data.duration * 60);
+        setStudentAnswers(Array(data.questionCount || data.answers?.length || 0).fill(''));
+      } else {
+        toast.error('Không tìm thấy đề thi');
+      }
+    };
+    fetchExam();
+  }, [examId]);
+
+  useEffect(() => {
+    if (timeLeft !== null && timeLeft > 0 && !hasSubmitted) {
+      timerRef.current = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
+    } else if (timeLeft === 0 && !hasSubmitted) {
+      handleSubmit();
+    }
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [timeLeft, hasSubmitted]);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden && !hasSubmitted) {
+        setTabSwitchCount(prev => prev + 1);
+        toast.warning('Cảnh báo: Bạn vừa chuyển tab/thoát khỏi màn hình làm bài!', {
+          icon: <AlertTriangle className="text-amber" />
+        });
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [hasSubmitted]);
+
+  const handleAnswerSelect = (index: number, option: string) => {
+    if (hasSubmitted) return;
+    const newAnswers = [...studentAnswers];
+    newAnswers[index] = option;
+    setStudentAnswers(newAnswers);
+  };
+
+  const handleSubmit = async () => {
+    if (!exam || hasSubmitted) return;
+    setIsSubmitting(true);
+    
+    // Calculate score
+    let correctCount = 0;
+    for (let i = 0; i < exam.answers.length; i++) {
+      if (studentAnswers[i] === exam.answers[i]) {
+        correctCount++;
+      }
+    }
+    
+    const finalScore = (correctCount / exam.answers.length) * 10;
+    setScore(finalScore);
+    setHasSubmitted(true);
+    
+    // Save result if student is logged in
+    const session = localStorage.getItem('student_session');
+    if (session) {
+      try {
+        const student = JSON.parse(session);
+        await addDoc(collection(db, 'examResults'), {
+          examId: exam.id,
+          studentId: student.username,
+          studentName: student.fullName,
+          class: student.class,
+          score: finalScore,
+          correctCount,
+          totalQuestions: exam.answers.length,
+          timeTaken: (exam.duration * 60) - (timeLeft || 0),
+          tabSwitchCount,
+          createdAt: Date.now(),
+          studentAnswers
+        });
+        toast.success('Đã nộp bài thành công!');
+      } catch (error) {
+        console.error('Error saving result:', error);
+        toast.error('Lỗi khi lưu kết quả.');
+      }
+    } else {
+      toast.success('Đã nộp bài (Chế độ xem trước)!');
+    }
+    setIsSubmitting(false);
+  };
+
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const getEmbedUrl = (url: string) => {
+    if (!url) return '';
+    const driveIdRegex = /(?:id=|\/d\/|folders\/|file\/d\/)([a-zA-Z0-9-_]{25,})/;
+    const match = url.match(driveIdRegex);
+    if (match && match[1]) {
+      return `https://drive.google.com/file/d/${match[1]}/preview`;
+    }
+    return url;
+  };
+
+  const getDriveOpenUrl = (url: string) => {
+    if (!url) return '';
+    const driveIdRegex = /(?:id=|\/d\/|folders\/|file\/d\/)([a-zA-Z0-9-_]{25,})/;
+    const match = url.match(driveIdRegex);
+    if (match && match[1]) {
+      return `https://drive.google.com/file/d/${match[1]}/view`;
+    }
+    return url;
+  };
+
+  if (!exam) return <div className="flex justify-center items-center h-screen">Đang tải...</div>;
+
+  const answeredCount = studentAnswers.filter(a => a !== '').length;
+
+  return (
+    <div className="container mx-auto px-4 py-8 max-w-[1600px]">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-navy">{exam.title}</h1>
+        {hasSubmitted && score !== null && (
+          <div className="flex gap-4 items-center">
+            {tabSwitchCount > 0 && (
+              <div className="bg-red-100 text-red-800 px-4 py-2 rounded-xl font-bold text-sm border border-red-200 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4" />
+                Thoát tab: {tabSwitchCount} lần
+              </div>
+            )}
+            <div className="bg-green-100 text-green-800 px-6 py-2 rounded-xl font-bold text-lg border border-green-200">
+              Điểm số: {score.toFixed(2)} / 10 ({Math.round((score/10) * exam.answers.length)}/{exam.answers.length} câu)
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Left Column: PDF Viewer */}
+        <div className="lg:col-span-3 h-[80vh] bg-slate-900 rounded-3xl overflow-hidden border-none shadow-2xl relative group">
+          <iframe 
+            src={getEmbedUrl(exam.pdfUrl)} 
+            className="w-full h-full border-none"
+            title="PDF Viewer"
+            allow="autoplay"
+          />
+          <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+            <a href={getDriveOpenUrl(exam.pdfUrl)} target="_blank" rel="noreferrer">
+              <Button className="bg-white/90 hover:bg-white text-navy font-bold rounded-xl shadow-lg h-9 px-4 text-sm">
+                <ExternalLink className="h-4 w-4 mr-2" /> Mở trong Drive
+              </Button>
+            </a>
+          </div>
+        </div>
+
+        {/* Right Column: Answers & Timer */}
+        <div className="lg:col-span-1 flex flex-col h-[80vh]">
+          <Card className="border-none shadow-xl flex-1 flex flex-col overflow-hidden rounded-3xl">
+            <CardHeader className="bg-navy text-white p-5 shrink-0 rounded-t-3xl">
+              <div className="flex flex-col gap-4">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2 font-mono text-2xl font-bold">
+                    <Clock className="w-6 h-6 text-amber" />
+                    {timeLeft !== null ? formatTime(timeLeft) : '--:--'}
+                  </div>
+                  <Button 
+                    onClick={handleSubmit} 
+                    disabled={isSubmitting || hasSubmitted}
+                    className="bg-amber text-navy hover:bg-amber/90 font-bold px-6"
+                  >
+                    <Send className="w-4 h-4 mr-2" />
+                    Nộp bài
+                  </Button>
+                </div>
+                <div className="bg-slate-800/50 rounded-lg p-2 text-center text-sm font-medium text-slate-300">
+                  Đã chọn: <span className="text-amber font-bold">{answeredCount}</span> / {exam.questionCount || exam.answers.length} câu
+                </div>
+              </div>
+            </CardHeader>
+            
+            <CardContent className="p-0 flex-1 overflow-y-auto bg-slate-50">
+              <div className="p-4 space-y-2">
+                {studentAnswers.map((answer, index) => (
+                  <div key={index} className="flex items-center justify-between bg-white p-2 rounded-xl border border-slate-100 shadow-sm hover:border-slate-300 transition-colors">
+                    <span className="font-bold text-navy w-14 text-sm">Câu {index + 1}.</span>
+                    <div className="flex gap-1.5 flex-1 justify-end">
+                      {['A', 'B', 'C', 'D'].map(option => {
+                        const isSelected = answer === option;
+                        const isCorrect = hasSubmitted && exam.answers[index] === option;
+                        const isWrong = hasSubmitted && isSelected && !isCorrect;
+                        
+                        let btnClass = "w-9 h-9 rounded-full font-bold transition-all text-sm ";
+                        
+                        if (hasSubmitted) {
+                          if (isCorrect) btnClass += "bg-green-500 text-white border-green-600";
+                          else if (isWrong) btnClass += "bg-red-500 text-white border-red-600";
+                          else btnClass += "bg-slate-100 text-slate-400 border-slate-200";
+                        } else {
+                          if (isSelected) btnClass += "bg-navy text-white border-navy shadow-md scale-110";
+                          else btnClass += "bg-white text-slate-600 border-slate-200 hover:border-navy hover:text-navy";
+                        }
+
+                        return (
+                          <Button 
+                            key={option} 
+                            variant="outline" 
+                            className={btnClass}
+                            onClick={() => handleAnswerSelect(index, option)}
+                            disabled={hasSubmitted}
+                          >
+                            {option}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
