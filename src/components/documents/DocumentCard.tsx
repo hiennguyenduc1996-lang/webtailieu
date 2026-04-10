@@ -67,7 +67,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ doc }) => {
           )}
           {isNew && (
             <span className="bg-amber text-white text-[10px] font-bold px-2 py-1 rounded-md shadow-sm uppercase tracking-wider">
-              Mới update
+              Update
             </span>
           )}
           {isHot && !isNew && (

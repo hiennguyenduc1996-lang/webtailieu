@@ -120,7 +120,7 @@ export default function LoginPage() {
             <User className="text-navy h-6 w-6" />
           </div>
           <CardTitle className="text-2xl text-white">Đăng nhập</CardTitle>
-          <p className="text-slate-400 text-sm">Đăng nhập để tham gia thảo luận và góp ý</p>
+          <p className="text-slate-400 text-sm">Đăng nhập vào hệ thống quản lí tài liệu</p>
         </div>
         <CardContent className="p-8">
           <form onSubmit={handleLogin} className="space-y-6">

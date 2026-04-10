@@ -29,7 +29,7 @@ export default function Navbar() {
   };
 
   const navLinks = [
-    { name: 'Tài liệu mới', href: '/' },
+    { name: 'Tài liệu mới', href: '/latest' },
     { name: 'Đề Trường Sở', href: '/category/provincial' },
     { name: 'Đề Trường Chuyên', href: '/category/specialized' },
     { name: 'Tài liệu Chuyên đề', href: '/category/thematic' },

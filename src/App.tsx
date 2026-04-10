@@ -4,6 +4,7 @@ import Footer from '@/src/components/layout/Footer';
 import HomePage from '@/src/pages/HomePage';
 import AdminPage from '@/src/pages/AdminPage';
 import LoginPage from '@/src/pages/LoginPage';
+import LatestDocumentsPage from '@/src/pages/LatestDocumentsPage';
 import DocumentDetailPage from '@/src/pages/DocumentDetailPage';
 import { Toaster } from '@/components/ui/sonner';
 import { ErrorBoundary } from '@/src/components/common/ErrorBoundary';
@@ -17,6 +18,7 @@ export default function App() {
           <main className="flex-grow">
             <Routes>
               <Route path="/" element={<HomePage />} />
+              <Route path="/latest" element={<LatestDocumentsPage />} />
               <Route path="/category/:category" element={<HomePage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/admin" element={<AdminPage />} />
