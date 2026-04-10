@@ -30,26 +30,31 @@ export function useAuth() {
     }
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        setUser(firebaseUser);
-        const docRef = doc(db, 'users', firebaseUser.uid);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          setProfile(docSnap.data() as UserProfile);
-        } else if (firebaseUser.email === 'hiennguyenduc1996@gmail.com') {
-          // Auto-profile for admin if missing
-          setProfile({
-            uid: firebaseUser.uid,
-            email: firebaseUser.email,
-            role: 'admin',
-            status: 'approved'
-          });
+      try {
+        if (firebaseUser) {
+          setUser(firebaseUser);
+          const docRef = doc(db, 'users', firebaseUser.uid);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            setProfile(docSnap.data() as UserProfile);
+          } else if (firebaseUser.email === 'hiennguyenduc1996@gmail.com') {
+            // Auto-profile for admin if missing
+            setProfile({
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              role: 'admin',
+              status: 'approved'
+            });
+          }
+        } else if (!mockSession) {
+          setUser(null);
+          setProfile(null);
         }
-      } else if (!mockSession) {
-        setUser(null);
-        setProfile(null);
+      } catch (error) {
+        console.error('Error fetching user profile:', error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => unsubscribe();

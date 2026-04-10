@@ -207,15 +207,19 @@ export default function AdminPage() {
   };
 
   const filteredAndSortedDocs = React.useMemo(() => {
-    let result = documents.filter(doc => 
-      doc.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (doc.author && doc.author.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
+    if (!documents) return [];
+    
+    let result = documents.filter(doc => {
+      if (!doc || !doc.title) return false;
+      const titleMatch = doc.title.toLowerCase().includes(searchTerm.toLowerCase());
+      const authorMatch = doc.author && doc.author.toLowerCase().includes(searchTerm.toLowerCase());
+      return titleMatch || authorMatch;
+    });
 
     result.sort((a, b) => {
-      if (sortBy === 'newest') return b.createdAt - a.createdAt;
-      if (sortBy === 'oldest') return a.createdAt - b.createdAt;
-      if (sortBy === 'az') return a.title.localeCompare(b.title);
+      if (sortBy === 'newest') return (b.createdAt || 0) - (a.createdAt || 0);
+      if (sortBy === 'oldest') return (a.createdAt || 0) - (b.createdAt || 0);
+      if (sortBy === 'az') return (a.title || '').localeCompare(b.title || '');
       return 0;
     });
 
@@ -223,16 +227,19 @@ export default function AdminPage() {
   }, [documents, searchTerm, sortBy]);
 
   const prefixStats = React.useMemo(() => {
+    if (!documents || !searchTerm) return null;
+    
     const matchPrefix = searchTerm.match(/^([a-zA-Z]+):/i);
     if (!matchPrefix) return null;
 
     const prefix = matchPrefix[1].toUpperCase();
     const relatedDocs = documents.filter(doc => 
-      doc.title.toUpperCase().includes(prefix)
+      doc && doc.title && doc.title.toUpperCase().includes(prefix)
     );
 
     const numbers: number[] = [];
     relatedDocs.forEach(doc => {
+      if (!doc || !doc.title) return;
       // Regex thông minh hơn: 
       // 1. Tìm tiền tố (ví dụ VDTS)
       // 2. Bỏ qua phần năm 4 chữ số nếu có dấu ngăn cách phía sau (ví dụ 2026.)
@@ -265,7 +272,7 @@ export default function AdminPage() {
     };
   }, [documents, searchTerm]);
 
-  const isAdmin = user?.email?.toLowerCase() === 'hiennguyenduc1996@gmail.com' || profile?.role === 'admin';
+  const isAdmin = Boolean(user?.email?.toLowerCase() === 'hiennguyenduc1996@gmail.com' || profile?.role === 'admin');
 
   if (authLoading) {
     return (
