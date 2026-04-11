@@ -15,6 +15,7 @@ interface Exam {
   answers: string[];
   questionCount: number;
   allowedAttempts: number;
+  resultDisplayMode?: 'ALL' | 'SCORE' | 'HIDE';
 }
 
 export default function PreviewExamPage() {
@@ -27,6 +28,7 @@ export default function PreviewExamPage() {
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const [score, setScore] = useState<number | null>(null);
   const [tabSwitchCount, setTabSwitchCount] = useState(0);
+  const [startedAt, setStartedAt] = useState<number | null>(null);
   
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -80,6 +82,7 @@ export default function PreviewExamPage() {
       setExam(examData);
       setTimeLeft(examData.duration * 60);
       setStudentAnswers(Array(examData.questionCount || examData.answers?.length || 0).fill(''));
+      setStartedAt(Date.now());
     };
     
     fetchExamAndCheckAttempts();
@@ -132,6 +135,7 @@ export default function PreviewExamPage() {
     }
     
     const finalScore = (correctCount / exam.answers.length) * 10;
+    const now = Date.now();
     setScore(finalScore);
     setHasSubmitted(true);
     
@@ -150,7 +154,9 @@ export default function PreviewExamPage() {
           totalQuestions: exam.answers.length,
           timeTaken: (exam.duration * 60) - (timeLeft || 0),
           tabSwitchCount,
-          createdAt: Date.now(),
+          startedAt: startedAt || (now - ((exam.duration * 60) - (timeLeft || 0)) * 1000),
+          finishedAt: now,
+          createdAt: now,
           studentAnswers
         });
         toast.success('Đã nộp bài thành công!');
@@ -198,17 +204,23 @@ export default function PreviewExamPage() {
     <div className="container mx-auto px-4 py-8 max-w-[1600px] font-sans">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-extrabold text-navy tracking-tight">{exam.title}</h1>
-        {hasSubmitted && score !== null && (
+        {hasSubmitted && (
           <div className="flex gap-4 items-center">
-            {tabSwitchCount > 0 && (
-              <div className="bg-red-100 text-red-800 px-5 py-2.5 rounded-2xl font-bold text-base border border-red-200 flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5" />
-                Thoát tab: {tabSwitchCount} lần
-              </div>
+            {exam.resultDisplayMode !== 'HIDE' && (
+              <>
+                {tabSwitchCount > 0 && (
+                  <div className="bg-red-100 text-red-800 px-5 py-2.5 rounded-2xl font-bold text-base border border-red-200 flex items-center gap-2">
+                    <AlertTriangle className="w-5 h-5" />
+                    Thoát tab: {tabSwitchCount} lần
+                  </div>
+                )}
+                {score !== null && (
+                  <div className="bg-green-100 text-green-800 px-8 py-2.5 rounded-2xl font-bold text-xl border border-green-200">
+                    Điểm số: {score.toFixed(2)} / 10 ({Math.round((score/10) * exam.answers.length)}/{exam.answers.length} câu)
+                  </div>
+                )}
+              </>
             )}
-            <div className="bg-green-100 text-green-800 px-8 py-2.5 rounded-2xl font-bold text-xl border border-green-200">
-              Điểm số: {score.toFixed(2)} / 10 ({Math.round((score/10) * exam.answers.length)}/{exam.answers.length} câu)
-            </div>
             <Button 
               onClick={() => {
                 const studentSession = localStorage.getItem('student_session');
@@ -292,9 +304,15 @@ export default function PreviewExamPage() {
                         let btnClass = "w-10 h-10 rounded-xl font-bold transition-all duration-200 text-base border-2 ";
                         
                         if (hasSubmitted) {
-                          if (isCorrect) btnClass += "bg-green-500 text-white border-green-600 shadow-green-200 shadow-lg";
-                          else if (isWrong) btnClass += "bg-red-500 text-white border-red-600 shadow-red-200 shadow-lg";
-                          else btnClass += "bg-slate-50 text-slate-300 border-slate-100";
+                          const showColors = exam.resultDisplayMode === 'ALL';
+                          if (showColors) {
+                            if (isCorrect) btnClass += "bg-green-500 text-white border-green-600 shadow-green-200 shadow-lg";
+                            else if (isWrong) btnClass += "bg-red-500 text-white border-red-600 shadow-red-200 shadow-lg";
+                            else btnClass += "bg-slate-50 text-slate-300 border-slate-100";
+                          } else {
+                            if (isSelected) btnClass += "bg-navy text-white border-navy opacity-70";
+                            else btnClass += "bg-slate-50 text-slate-300 border-slate-100";
+                          }
                         } else {
                           if (isSelected) btnClass += "bg-navy text-white border-navy shadow-lg scale-110 z-10";
                           else btnClass += "bg-white text-slate-500 border-slate-100 hover:border-amber hover:text-amber hover:bg-amber/5";

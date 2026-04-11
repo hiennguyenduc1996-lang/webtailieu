@@ -11,10 +11,12 @@ import { db } from '@/src/lib/firebase';
 import { collection, addDoc, query, onSnapshot, orderBy, deleteDoc, doc, updateDoc, setDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { read, utils } from 'xlsx';
+import { read, utils, writeFile } from 'xlsx';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useAuth } from '@/src/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Download, Trash2, UserPlus, FileUp } from 'lucide-react';
 
 const examSchema = z.object({
   title: z.string().min(1, 'Tiêu đề là bắt buộc'),
@@ -22,6 +24,7 @@ const examSchema = z.object({
   duration: z.number().min(1, 'Thời gian phải lớn hơn 0'),
   questionCount: z.number().min(1, 'Số câu hỏi phải lớn hơn 0'),
   allowedAttempts: z.number().min(1, 'Số lần làm bài tối thiểu là 1'),
+  resultDisplayMode: z.enum(['ALL', 'SCORE', 'HIDE']),
 });
 
 const studentSchema = z.object({
@@ -41,6 +44,7 @@ interface Exam {
   answers: string[];
   questionCount: number;
   allowedAttempts: number;
+  resultDisplayMode: 'ALL' | 'SCORE' | 'HIDE';
 }
 
 interface StudentAccount {
@@ -57,6 +61,7 @@ interface ExamFormValues {
   duration: number;
   questionCount: number;
   allowedAttempts: number;
+  resultDisplayMode: 'ALL' | 'SCORE' | 'HIDE';
 }
 
 interface ExamResult {
@@ -78,7 +83,7 @@ export default function TeacherDashboard() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
-  const { register, handleSubmit, formState: { errors }, reset, watch } = useForm<ExamFormValues>({
+  const { register, handleSubmit, formState: { errors }, reset, watch, setValue } = useForm<ExamFormValues>({
     resolver: zodResolver(examSchema),
     defaultValues: {
       title: '',
@@ -86,6 +91,7 @@ export default function TeacherDashboard() {
       duration: 60,
       questionCount: 40,
       allowedAttempts: 1,
+      resultDisplayMode: 'ALL',
     },
   });
 
@@ -98,12 +104,15 @@ export default function TeacherDashboard() {
   const [results, setResults] = useState<ExamResult[]>([]);
   const [activeTab, setActiveTab] = useState('create');
   const [editingExamId, setEditingExamId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'name'>('newest');
   const questionCount = watch('questionCount');
   const [answers, setAnswers] = useState<string[]>(() => Array(40).fill('A'));
   const [answerInputType, setAnswerInputType] = useState<'select' | 'string'>('select');
   const [answerString, setAnswerString] = useState('');
   const [isStudentDialogOpen, setIsStudentDialogOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<StudentAccount | null>(null);
+  const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -195,6 +204,7 @@ export default function TeacherDashboard() {
       duration: exam.duration,
       questionCount: exam.questionCount,
       allowedAttempts: exam.allowedAttempts,
+      resultDisplayMode: exam.resultDisplayMode || 'ALL',
     });
     setAnswers(exam.answers);
     setAnswerInputType('select'); // Default to select for editing for simplicity
@@ -209,6 +219,7 @@ export default function TeacherDashboard() {
       duration: 60,
       questionCount: 40,
       allowedAttempts: 1,
+      resultDisplayMode: 'ALL',
     });
     setAnswers(Array(40).fill('A'));
     setActiveTab('manage');
@@ -309,7 +320,57 @@ export default function TeacherDashboard() {
   const handleDeleteStudent = async (id: string) => {
     if (confirm('Bạn có chắc chắn muốn xóa tài khoản này?')) {
       await deleteDoc(doc(db, 'studentAccounts', id));
+      setSelectedStudents(prev => prev.filter(sid => sid !== id));
       toast.success('Đã xóa tài khoản');
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedStudents.length === 0) return;
+    if (confirm(`Bạn có chắc chắn muốn xóa ${selectedStudents.length} tài khoản đã chọn?`)) {
+      try {
+        for (const id of selectedStudents) {
+          await deleteDoc(doc(db, 'studentAccounts', id));
+        }
+        setSelectedStudents([]);
+        toast.success(`Đã xóa ${selectedStudents.length} tài khoản`);
+      } catch (error) {
+        console.error(error);
+        toast.error('Lỗi khi xóa nhiều tài khoản');
+      }
+    }
+  };
+
+  const exportStudentsToExcel = () => {
+    if (students.length === 0) {
+      toast.error('Không có dữ liệu để xuất');
+      return;
+    }
+
+    const data = students.map(s => ({
+      'Họ và tên': s.fullName,
+      'Tên tài khoản': s.username,
+      'Mật khẩu': s.password,
+      'Lớp': s.class
+    }));
+
+    const worksheet = utils.json_to_sheet(data);
+    const workbook = utils.book_new();
+    utils.book_append_sheet(workbook, worksheet, 'Danh sách học sinh');
+    writeFile(workbook, 'Danh_sach_hoc_sinh.xlsx');
+  };
+
+  const toggleSelectStudent = (id: string) => {
+    setSelectedStudents(prev => 
+      prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedStudents.length === students.length) {
+      setSelectedStudents([]);
+    } else {
+      setSelectedStudents(students.map(s => s.id));
     }
   };
 
@@ -341,72 +402,96 @@ export default function TeacherDashboard() {
     return studentStats.sort((a, b) => b.score - a.score);
   };
 
+  const filteredAndSortedExams = exams
+    .filter(exam => exam.title.toLowerCase().includes(searchQuery.toLowerCase()))
+    .sort((a, b) => {
+      if (sortBy === 'name') return a.title.localeCompare(b.title);
+      if (sortBy === 'oldest') return a.createdAt - b.createdAt;
+      return b.createdAt - a.createdAt; // newest
+    });
+
   return (
     <div className="container mx-auto px-4 py-12">
       <h1 className="text-4xl font-extrabold mb-10 text-navy tracking-tight">Dashboard Giáo viên</h1>
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-3 mb-10 p-1 bg-slate-100 rounded-xl h-14">
-          <TabsTrigger value="create" className="text-lg font-bold rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
-            {editingExamId ? 'Sửa đề' : 'Tạo đề'}
+          <TabsTrigger value="create" className="text-lg font-bold rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm uppercase">
+            {editingExamId ? 'SỬA ĐỀ' : 'TẠO ĐỀ'}
           </TabsTrigger>
-          <TabsTrigger value="manage" className="text-lg font-bold rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">Quản lý đề</TabsTrigger>
-          <TabsTrigger value="accounts" className="text-lg font-bold rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">Tài khoản</TabsTrigger>
+          <TabsTrigger value="manage" className="text-lg font-bold rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm uppercase">QUẢN LÝ ĐỀ</TabsTrigger>
+          <TabsTrigger value="accounts" className="text-lg font-bold rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm uppercase">TÀI KHOẢN</TabsTrigger>
         </TabsList>
         <TabsContent value="create">
           <Card className="shadow-lg border-slate-100">
             <CardHeader>
-              <CardTitle className="text-2xl font-bold">
-                {editingExamId ? `Đang sửa: ${watch('title')}` : 'Tạo đề thi mới'}
+              <CardTitle className="text-2xl font-bold uppercase">
+                {editingExamId ? `ĐANG SỬA: ${watch('title')}` : 'TẠO ĐỀ THI MỚI'}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                 <div className="space-y-2">
-                  <Label className="text-base font-semibold">Tiêu đề</Label>
-                  <Input placeholder="Nhập tiêu đề đề thi" className="h-12 text-lg" {...register('title')} />
+                  <Label className="text-base font-bold uppercase">TIÊU ĐỀ</Label>
+                  <Input placeholder="Nhập tiêu đề đề thi" className="h-12 text-lg font-bold" {...register('title')} />
                   {errors.title && <p className="text-red-500 text-sm">{errors.title.message}</p>}
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-base font-semibold">URL PDF</Label>
-                  <Input placeholder="Nhập URL file PDF" className="h-12 text-lg" {...register('pdfUrl')} />
+                  <Label className="text-base font-bold uppercase">URL</Label>
+                  <Input placeholder="Nhập URL file PDF" className="h-12 text-lg font-bold" {...register('pdfUrl')} />
                   {errors.pdfUrl && <p className="text-red-500 text-sm">{errors.pdfUrl.message}</p>}
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-base font-semibold">Thời gian (phút)</Label>
-                  <Input type="number" className="h-12 text-lg" {...register('duration')} />
+                  <Label className="text-base font-bold uppercase">THỜI GIAN</Label>
+                  <Input type="number" className="h-12 text-lg font-bold" {...register('duration')} />
                   {errors.duration && <p className="text-red-500 text-sm">{errors.duration.message}</p>}
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-base font-semibold">Số lượng câu hỏi</Label>
-                  <Input type="number" className="h-12 text-lg" {...register('questionCount', { valueAsNumber: true })} />
+                  <Label className="text-base font-bold uppercase">SỐ LƯỢNG CÂU HỎI</Label>
+                  <Input type="number" className="h-12 text-lg font-bold" {...register('questionCount', { valueAsNumber: true })} />
                   {errors.questionCount && <p className="text-red-500 text-sm">{errors.questionCount.message}</p>}
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-base font-semibold">Số lần làm bài tối đa</Label>
-                  <Input type="number" className="h-12 text-lg" {...register('allowedAttempts', { valueAsNumber: true })} />
+                  <Label className="text-base font-bold uppercase">SỐ LẦN LÀM BÀI TỐI ĐA</Label>
+                  <Input type="number" className="h-12 text-lg font-bold" {...register('allowedAttempts', { valueAsNumber: true })} />
                   {errors.allowedAttempts && <p className="text-red-500 text-sm">{errors.allowedAttempts.message}</p>}
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-base font-semibold">Cách nhập đáp án</Label>
-                  <Select value={answerInputType} onValueChange={(v: any) => setAnswerInputType(v)}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
+                  <Label className="text-base font-bold uppercase">CHẾ ĐỘ HIỂN THỊ KẾT QUẢ SAU KHI NỘP</Label>
+                  <Select 
+                    value={watch('resultDisplayMode')} 
+                    onValueChange={(v) => setValue('resultDisplayMode', v as any)}
+                  >
+                    <SelectTrigger className="h-12 text-lg font-bold uppercase border-2 border-slate-200 rounded-xl bg-white">
+                      <SelectValue placeholder="CHỌN CHẾ ĐỘ HIỂN THỊ" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="select">Chọn từng câu</SelectItem>
-                      <SelectItem value="string">Nhập chuỗi (VD: 1A2B3C)</SelectItem>
+                      <SelectItem value="ALL" className="font-bold uppercase">ĐÚNG, ĐIỂM, CÂU SAI</SelectItem>
+                      <SelectItem value="SCORE" className="font-bold uppercase">ĐÚNG, ĐIỂM (ẨN CÂU SAI)</SelectItem>
+                      <SelectItem value="HIDE" className="font-bold uppercase">KHÔNG HIỂN THỊ GÌ</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-base font-bold uppercase">CÁCH NHẬP ĐÁP ÁN</Label>
+                  <Select value={answerInputType} onValueChange={(v: any) => setAnswerInputType(v)}>
+                    <SelectTrigger className="w-full h-12 text-lg border-2 border-slate-200">
+                      <SelectValue placeholder="CHỌN CÁCH NHẬP" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="select">CHỌN TỪNG CÂU</SelectItem>
+                      <SelectItem value="string">NHẬP CHUỖI (VD: 1A2B3C)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 {answerInputType === 'select' ? (
                   <div className="space-y-2">
-                    <Label className="text-base font-semibold">Đáp án ({questionCount} câu)</Label>
+                    <Label className="text-base font-bold uppercase">ĐÁP ÁN ({questionCount} CÂU)</Label>
                     <div className="grid grid-cols-5 gap-2">
                       {answers.map((answer, index) => (
                         <div key={index} className="flex items-center gap-1">
-                          <span className="text-sm font-medium w-6">{index + 1}.</span>
+                          <span className="text-sm font-bold w-6">{index + 1}.</span>
                           <Select value={answer} onValueChange={(val) => handleAnswerChange(index, val)}>
-                            <SelectTrigger className="w-16"><SelectValue /></SelectTrigger>
+                            <SelectTrigger className="w-16 h-10 font-bold border-2 border-slate-200"><SelectValue /></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="A">A</SelectItem><SelectItem value="B">B</SelectItem>
                               <SelectItem value="C">C</SelectItem><SelectItem value="D">D</SelectItem>
@@ -418,7 +503,7 @@ export default function TeacherDashboard() {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    <Label className="text-base font-semibold">Chuỗi đáp án</Label>
+                    <Label className="text-base font-bold uppercase">CHUỖI ĐÁP ÁN</Label>
                     <Input value={answerString} onChange={(e) => setAnswerString(e.target.value)} placeholder="VD: 1A2B3C..." className="h-12 text-lg" />
                   </div>
                 )}
@@ -438,20 +523,71 @@ export default function TeacherDashboard() {
         </TabsContent>
         <TabsContent value="manage">
           <Card className="shadow-lg border-slate-100">
-            <CardHeader><CardTitle className="text-2xl font-bold">Danh sách đề thi</CardTitle></CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-7">
+              <CardTitle className="text-2xl font-bold uppercase">DANH SÁCH ĐỀ THI</CardTitle>
+              <div className="flex items-center gap-4">
+                <div className="relative w-64">
+                  <Input 
+                    placeholder="Tìm kiếm đề thi..." 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-4 h-10"
+                  />
+                </div>
+                <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+                  <SelectTrigger className="w-40 h-10 font-bold border-2 border-slate-200">
+                    <SelectValue placeholder="SẮP XẾP" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="newest">MỚI NHẤT</SelectItem>
+                    <SelectItem value="oldest">CŨ NHẤT</SelectItem>
+                    <SelectItem value="name">TÊN (A-Z)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {exams.map(exam => (
-                  <div key={exam.id} className="flex justify-between items-center p-4 border rounded-lg">
+                {filteredAndSortedExams.map(exam => (
+                  <div key={exam.id} className="flex justify-between items-center p-4 border rounded-lg hover:bg-slate-50 transition-colors">
                     <div>
-                      <h3 className="font-bold">{exam.title}</h3>
-                      <p className="text-sm text-slate-500">Thời gian: {exam.duration} phút - {exam.questionCount} câu</p>
+                      <h3 className="font-bold text-lg text-navy">{exam.title}</h3>
+                      <div className="flex items-center gap-4 mt-1">
+                        <p className="text-sm text-slate-500">Thời gian: {exam.duration} phút - {exam.questionCount} câu</p>
+                        <p className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded">
+                          Ngày tạo: {new Date(exam.createdAt).toLocaleDateString('vi-VN')} {new Date(exam.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
                     </div>
                     <div className="flex gap-2">
-                      <Button variant="outline" onClick={() => handleEditExam(exam)}>Sửa</Button>
-                      <Button variant="destructive" onClick={() => handleDeleteExam(exam.id)}>Xóa</Button>
-                      <Button variant="outline" onClick={() => window.open(`/preview-exam/${exam.id}`, '_blank')}>Xem trước</Button>
-                      <Button variant="default" className="bg-amber hover:bg-amber/90 text-navy font-bold" onClick={() => navigate(`/thi-online/stats/${exam.id}`)}>Thống kê</Button>
+                      <Button 
+                        variant="default" 
+                        className="bg-blue-600 hover:bg-blue-700 text-white font-black border-2 border-blue-800 uppercase shadow-md transition-all hover:scale-110"
+                        onClick={() => handleEditExam(exam)}
+                      >
+                        SỬA
+                      </Button>
+                      <Button 
+                        variant="destructive" 
+                        className="bg-red-600 hover:bg-red-700 text-white font-black border-2 border-red-800 uppercase shadow-md transition-all hover:scale-110"
+                        onClick={() => handleDeleteExam(exam.id)}
+                      >
+                        XÓA
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        className="border-2 border-slate-800 text-slate-800 font-black hover:bg-slate-800 hover:text-white uppercase shadow-md transition-all hover:scale-110"
+                        onClick={() => window.open(`/preview-exam/${exam.id}`, '_blank')}
+                      >
+                        XEM TRƯỚC
+                      </Button>
+                      <Button 
+                        variant="default" 
+                        className="bg-amber hover:bg-amber/90 text-navy font-black border-2 border-amber-600 uppercase shadow-md transition-all hover:scale-110" 
+                        onClick={() => navigate(`/thi-online/stats/${exam.id}`)}
+                      >
+                        THỐNG KÊ
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -461,74 +597,148 @@ export default function TeacherDashboard() {
         </TabsContent>
         <TabsContent value="accounts">
           <Card className="shadow-lg border-slate-100">
-            <CardHeader className="flex justify-between items-center">
-              <CardTitle className="text-2xl font-bold">Quản lý tài khoản học sinh</CardTitle>
-              <Dialog open={isStudentDialogOpen} onOpenChange={(open) => {
-                setIsStudentDialogOpen(open);
-                if (!open) {
-                  resetStudent();
-                  setEditingStudent(null);
-                }
-              }}>
-                <DialogTrigger render={
-                  <Button className="bg-navy hover:bg-navy/90">Tạo tài khoản</Button>
-                } />
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>{editingStudent ? 'Sửa tài khoản' : 'Tạo tài khoản mới'}</DialogTitle>
-                  </DialogHeader>
-                  <form onSubmit={handleSubmitStudent(onSubmitStudent)} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Họ và Tên</Label>
-                      <Input {...registerStudent('fullName')} />
-                      {studentErrors.fullName && <p className="text-red-500 text-sm">{studentErrors.fullName.message}</p>}
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Tên tài khoản</Label>
-                      <Input {...registerStudent('username')} />
-                      {studentErrors.username && <p className="text-red-500 text-sm">{studentErrors.username.message}</p>}
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Mật khẩu</Label>
-                      <Input type="password" {...registerStudent('password')} />
-                      {studentErrors.password && <p className="text-red-500 text-sm">{studentErrors.password.message}</p>}
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Lớp</Label>
-                      <Input {...registerStudent('className')} />
-                      {studentErrors.className && <p className="text-red-500 text-sm">{studentErrors.className.message}</p>}
-                    </div>
-                    <Button type="submit" className="w-full">{editingStudent ? 'Cập nhật' : 'Tạo mới'}</Button>
-                  </form>
-                </DialogContent>
-              </Dialog>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-7">
+              <CardTitle className="text-2xl font-bold uppercase">QUẢN LÝ TÀI KHOẢN HỌC SINH</CardTitle>
+              <div className="flex gap-3">
+                <Button 
+                  onClick={exportStudentsToExcel} 
+                  className="bg-green-600 hover:bg-green-700 text-white font-bold h-10 px-4 rounded-xl shadow-lg transition-all hover:scale-105"
+                >
+                  <Download className="w-4 h-4 mr-2" /> XUẤT EXCEL
+                </Button>
+                <Dialog open={isStudentDialogOpen} onOpenChange={(open) => {
+                  setIsStudentDialogOpen(open);
+                  if (!open) {
+                    resetStudent();
+                    setEditingStudent(null);
+                  }
+                }}>
+                  <DialogTrigger render={
+                    <Button className="bg-navy hover:bg-navy/90 font-bold h-10 px-4 rounded-xl shadow-lg transition-all hover:scale-105 text-white">
+                      <UserPlus className="w-4 h-4 mr-2" /> TẠO TÀI KHOẢN
+                    </Button>
+                  } />
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle className="uppercase font-bold">{editingStudent ? 'SỬA TÀI KHOẢN' : 'TẠO TÀI KHOẢN MỚI'}</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleSubmitStudent(onSubmitStudent)} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label className="font-bold uppercase">HỌ VÀ TÊN</Label>
+                        <Input {...registerStudent('fullName')} className="font-bold" />
+                        {studentErrors.fullName && <p className="text-red-500 text-sm">{studentErrors.fullName.message}</p>}
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="font-bold uppercase">TÊN TÀI KHOẢN</Label>
+                        <Input {...registerStudent('username')} className="font-bold" />
+                        {studentErrors.username && <p className="text-red-500 text-sm">{studentErrors.username.message}</p>}
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="font-bold uppercase">MẬT KHẨU</Label>
+                        <Input type="text" {...registerStudent('password')} className="font-bold" />
+                        {studentErrors.password && <p className="text-red-500 text-sm">{studentErrors.password.message}</p>}
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="font-bold uppercase">LỚP</Label>
+                        <Input {...registerStudent('className')} className="font-bold" />
+                        {studentErrors.className && <p className="text-red-500 text-sm">{studentErrors.className.message}</p>}
+                      </div>
+                      <Button type="submit" className="w-full bg-navy font-bold h-12 text-lg uppercase shadow-lg text-white">{editingStudent ? 'CẬP NHẬT' : 'TẠO MỚI'}</Button>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
-                <div className="space-y-2 p-4 bg-slate-50 rounded-lg border">
-                  <Label className="text-base font-semibold">Tải lên file Excel danh sách học sinh</Label>
-                  <p className="text-sm text-slate-500 mb-2">File Excel cần có các cột: Họ và tên, Tên tài khoản, Mật khẩu, Lớp</p>
-                  <Input type="file" accept=".xlsx, .xls" onChange={handleFileUpload} />
+              <div className="space-y-8">
+                <div className="p-6 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+                  <Label className="text-base font-bold uppercase flex items-center gap-2 mb-2">
+                    <FileUp className="w-5 h-5 text-navy" /> TẢI LÊN FILE EXCEL DANH SÁCH HỌC SINH
+                  </Label>
+                  <p className="text-sm text-slate-500 mb-4">File Excel cần có các cột: <strong>Họ và tên, Tên tài khoản, Mật khẩu, Lớp</strong></p>
+                  <Input type="file" accept=".xlsx, .xls" onChange={handleFileUpload} className="bg-white border-2 h-12 pt-2" />
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-bold mb-4">Danh sách học sinh ({students.length})</h3>
-                  <div className="space-y-2">
-                    {students.map(student => (
-                      <div key={student.id} className="flex justify-between items-center p-3 border rounded-lg hover:bg-slate-50">
-                        <div>
-                          <p className="font-bold">{student.fullName} <span className="text-sm font-normal text-slate-500">- Lớp: {student.class}</span></p>
-                          <p className="text-sm text-slate-600">Tài khoản: {student.username} | Mật khẩu: <span className="font-mono text-amber">{student.password}</span></p>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button variant="outline" size="sm" onClick={() => handleEditStudent(student)}>Sửa</Button>
-                          <Button variant="destructive" size="sm" onClick={() => handleDeleteStudent(student.id)}>Xóa</Button>
-                        </div>
-                      </div>
-                    ))}
-                    {students.length === 0 && (
-                      <p className="text-center text-slate-500 py-4">Chưa có tài khoản học sinh nào.</p>
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-xl font-black text-navy uppercase">DANH SÁCH HỌC SINH ({students.length})</h3>
+                    {selectedStudents.length > 0 && (
+                      <Button 
+                        variant="destructive" 
+                        onClick={handleBulkDelete}
+                        className="bg-red-600 hover:bg-red-700 font-black border-2 border-red-800 uppercase shadow-lg animate-in fade-in slide-in-from-right-4"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" /> XÓA ĐÃ CHỌN ({selectedStudents.length})
+                      </Button>
                     )}
+                  </div>
+
+                  <div className="border-2 border-slate-100 rounded-2xl overflow-hidden shadow-sm">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-slate-100 text-navy font-black border-b-2 border-slate-200">
+                          <th className="p-4 w-12">
+                            <Checkbox 
+                              checked={selectedStudents.length === students.length && students.length > 0}
+                              onCheckedChange={toggleSelectAll}
+                              className="border-2 border-navy data-[state=checked]:bg-navy"
+                            />
+                          </th>
+                          <th className="p-4 uppercase">HỌ VÀ TÊN</th>
+                          <th className="p-4 uppercase">TÀI KHOẢN</th>
+                          <th className="p-4 uppercase">LỚP</th>
+                          <th className="p-4 uppercase text-center">HÀNH ĐỘNG</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {students.map(student => (
+                          <tr key={student.id} className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${selectedStudents.includes(student.id) ? 'bg-blue-50/50' : ''}`}>
+                            <td className="p-4">
+                              <Checkbox 
+                                checked={selectedStudents.includes(student.id)}
+                                onCheckedChange={() => toggleSelectStudent(student.id)}
+                                className="border-2 border-slate-400 data-[state=checked]:bg-navy data-[state=checked]:border-navy"
+                              />
+                            </td>
+                            <td className="p-4">
+                              <div className="font-bold text-navy">{student.fullName}</div>
+                            </td>
+                            <td className="p-4">
+                              <div className="text-sm font-bold text-slate-600">{student.username}</div>
+                              <div className="text-xs text-slate-400 font-mono">MK: {student.password}</div>
+                            </td>
+                            <td className="p-4">
+                              <span className="bg-slate-200 text-navy px-3 py-1 rounded-full text-xs font-black">{student.class}</span>
+                            </td>
+                            <td className="p-4 text-center">
+                              <div className="flex justify-center gap-2">
+                                <Button 
+                                  variant="default" 
+                                  size="sm" 
+                                  onClick={() => handleEditStudent(student)}
+                                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold border-2 border-blue-800 shadow-lg transition-all hover:scale-110"
+                                >
+                                  SỬA
+                                </Button>
+                                <Button 
+                                  variant="destructive" 
+                                  size="sm" 
+                                  onClick={() => handleDeleteStudent(student.id)}
+                                  className="bg-red-600 hover:bg-red-700 text-white font-bold border-2 border-red-800 shadow-lg transition-all hover:scale-110"
+                                >
+                                  XÓA
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                        {students.length === 0 && (
+                          <tr>
+                            <td colSpan={5} className="p-12 text-center text-slate-500 font-bold text-lg uppercase">Chưa có tài khoản học sinh nào.</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               </div>
