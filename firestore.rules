@@ -118,14 +118,19 @@ service cloud.firestore {
     }
 
     match /examResults/{resultId} {
-      allow read: if isAuthenticated();
+      allow read: if true;
       allow create: if true;
       allow update, delete: if isAuthenticated();
     }
 
     match /studentAccounts/{studentId} {
       allow get: if true;
-      allow list: if isAuthenticated();
+      allow list: if true;
+      allow create, update, delete: if isAuthenticated();
+    }
+
+    match /examUnlocks/{unlockId} {
+      allow read: if true;
       allow create, update, delete: if isAuthenticated();
     }
   }

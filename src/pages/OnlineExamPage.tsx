@@ -17,6 +17,23 @@ export default function OnlineExamPage() {
   const [studentPassword, setStudentPassword] = useState('');
   const navigate = useNavigate();
 
+  React.useEffect(() => {
+    // Check student session
+    const studentSession = localStorage.getItem('student_session');
+    if (studentSession) {
+      navigate('/thi-online/student');
+      return;
+    }
+
+    // Check teacher session
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        navigate('/thi-online/teacher');
+      }
+    });
+    return () => unsubscribe();
+  }, [navigate]);
+
   const handleTeacherLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     try {

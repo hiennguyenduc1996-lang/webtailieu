@@ -21,6 +21,7 @@ const examSchema = z.object({
   pdfUrl: z.string().url('URL không hợp lệ'),
   duration: z.number().min(1, 'Thời gian phải lớn hơn 0'),
   questionCount: z.number().min(1, 'Số câu hỏi phải lớn hơn 0'),
+  allowedAttempts: z.number().min(1, 'Số lần làm bài tối thiểu là 1'),
 });
 
 const studentSchema = z.object({
@@ -39,6 +40,7 @@ interface Exam {
   createdAt: number;
   answers: string[];
   questionCount: number;
+  allowedAttempts: number;
 }
 
 interface StudentAccount {
@@ -54,6 +56,22 @@ interface ExamFormValues {
   pdfUrl: string;
   duration: number;
   questionCount: number;
+  allowedAttempts: number;
+}
+
+interface ExamResult {
+  id: string;
+  examId: string;
+  studentId: string;
+  studentName: string;
+  class: string;
+  score: number;
+  correctCount: number;
+  totalQuestions: number;
+  timeTaken: number;
+  tabSwitchCount: number;
+  createdAt: number;
+  studentAnswers: string[];
 }
 
 export default function TeacherDashboard() {
@@ -67,6 +85,7 @@ export default function TeacherDashboard() {
       pdfUrl: '',
       duration: 60,
       questionCount: 40,
+      allowedAttempts: 1,
     },
   });
 
@@ -76,8 +95,11 @@ export default function TeacherDashboard() {
 
   const [exams, setExams] = useState<Exam[]>([]);
   const [students, setStudents] = useState<StudentAccount[]>([]);
+  const [results, setResults] = useState<ExamResult[]>([]);
+  const [activeTab, setActiveTab] = useState('create');
+  const [editingExamId, setEditingExamId] = useState<string | null>(null);
   const questionCount = watch('questionCount');
-  const [answers, setAnswers] = useState<string[]>(Array(questionCount).fill('A'));
+  const [answers, setAnswers] = useState<string[]>(() => Array(40).fill('A'));
   const [answerInputType, setAnswerInputType] = useState<'select' | 'string'>('select');
   const [answerString, setAnswerString] = useState('');
   const [isStudentDialogOpen, setIsStudentDialogOpen] = useState(false);
@@ -90,7 +112,14 @@ export default function TeacherDashboard() {
   }, [user, authLoading, navigate]);
 
   useEffect(() => {
-    setAnswers(Array(questionCount).fill('A'));
+    const count = Math.max(0, Math.min(500, Math.floor(Number(questionCount) || 0)));
+    setAnswers(prev => {
+      if (prev.length === count) return prev;
+      if (prev.length < count) {
+        return [...prev, ...Array(count - prev.length).fill('A')];
+      }
+      return prev.slice(0, count);
+    });
   }, [questionCount]);
 
   useEffect(() => {
@@ -111,6 +140,15 @@ export default function TeacherDashboard() {
     return () => unsubscribe();
   }, []);
 
+  useEffect(() => {
+    const q = query(collection(db, 'examResults'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const resultsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ExamResult));
+      setResults(resultsData);
+    });
+    return () => unsubscribe();
+  }, []);
+
   async function onSubmit(values: ExamFormValues) {
     let finalAnswers = answers;
     if (answerInputType === 'string') {
@@ -125,19 +163,56 @@ export default function TeacherDashboard() {
     }
 
     try {
-      await addDoc(collection(db, 'exams'), {
-        ...values,
-        answers: finalAnswers,
-        isPublished: false,
-        createdAt: Date.now(),
-      });
-      toast.success('Đã lưu đề thi thành công');
+      if (editingExamId) {
+        await updateDoc(doc(db, 'exams', editingExamId), {
+          ...values,
+          answers: finalAnswers,
+        });
+        toast.success('Đã cập nhật đề thi thành công');
+        setEditingExamId(null);
+      } else {
+        await addDoc(collection(db, 'exams'), {
+          ...values,
+          answers: finalAnswers,
+          isPublished: false,
+          createdAt: Date.now(),
+        });
+        toast.success('Đã lưu đề thi thành công');
+      }
       reset();
+      setActiveTab('manage');
     } catch (error) {
       console.error(error);
       toast.error('Lỗi khi lưu đề thi');
     }
   }
+
+  const handleEditExam = (exam: Exam) => {
+    setEditingExamId(exam.id);
+    reset({
+      title: exam.title,
+      pdfUrl: exam.pdfUrl,
+      duration: exam.duration,
+      questionCount: exam.questionCount,
+      allowedAttempts: exam.allowedAttempts,
+    });
+    setAnswers(exam.answers);
+    setAnswerInputType('select'); // Default to select for editing for simplicity
+    setActiveTab('create');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingExamId(null);
+    reset({
+      title: '',
+      pdfUrl: '',
+      duration: 60,
+      questionCount: 40,
+      allowedAttempts: 1,
+    });
+    setAnswers(Array(40).fill('A'));
+    setActiveTab('manage');
+  };
 
   const handleDeleteExam = async (id: string) => {
     if (confirm('Bạn có chắc chắn muốn xóa đề thi này?')) {
@@ -238,19 +313,52 @@ export default function TeacherDashboard() {
     }
   };
 
+  const handleAllowRetake = async (studentId: string, examId: string) => {
+    if (confirm('Bạn có chắc chắn muốn xóa kết quả của học sinh này để làm lại?')) {
+      try {
+        const studentResults = results.filter(r => r.examId === examId && r.studentId === studentId);
+        for (const res of studentResults) {
+          await deleteDoc(doc(db, 'examResults', res.id));
+        }
+        toast.success('Đã xóa kết quả, học sinh có thể làm lại');
+      } catch (error) {
+        console.error(error);
+        toast.error('Lỗi khi xóa kết quả');
+      }
+    }
+  };
+
+  const getStudentStats = (examId: string) => {
+    const examResults = results.filter(r => r.examId === examId);
+    // Group by studentId, keep highest score
+    const studentStats = Object.values(examResults.reduce((acc, curr) => {
+      if (!acc[curr.studentId] || curr.score > acc[curr.studentId].score) {
+        acc[curr.studentId] = curr;
+      }
+      return acc;
+    }, {} as Record<string, ExamResult>));
+    
+    return studentStats.sort((a, b) => b.score - a.score);
+  };
+
   return (
     <div className="container mx-auto px-4 py-12">
       <h1 className="text-4xl font-extrabold mb-10 text-navy tracking-tight">Dashboard Giáo viên</h1>
-      <Tabs defaultValue="create">
-        <TabsList className="grid w-full grid-cols-4 mb-10 p-1 bg-slate-100 rounded-xl h-14">
-          <TabsTrigger value="create" className="text-lg font-bold rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">Tạo đề</TabsTrigger>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-3 mb-10 p-1 bg-slate-100 rounded-xl h-14">
+          <TabsTrigger value="create" className="text-lg font-bold rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
+            {editingExamId ? 'Sửa đề' : 'Tạo đề'}
+          </TabsTrigger>
           <TabsTrigger value="manage" className="text-lg font-bold rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">Quản lý đề</TabsTrigger>
-          <TabsTrigger value="stats" className="text-lg font-bold rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">Thống kê</TabsTrigger>
           <TabsTrigger value="accounts" className="text-lg font-bold rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">Tài khoản</TabsTrigger>
         </TabsList>
         <TabsContent value="create">
           <Card className="shadow-lg border-slate-100">
-            <CardHeader><CardTitle className="text-2xl font-bold">Tạo đề thi mới</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-2xl font-bold">
+                {editingExamId ? `Đang sửa: ${watch('title')}` : 'Tạo đề thi mới'}
+              </CardTitle>
+            </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                 <div className="space-y-2">
@@ -270,8 +378,13 @@ export default function TeacherDashboard() {
                 </div>
                 <div className="space-y-2">
                   <Label className="text-base font-semibold">Số lượng câu hỏi</Label>
-                  <Input type="number" className="h-12 text-lg" {...register('questionCount')} />
+                  <Input type="number" className="h-12 text-lg" {...register('questionCount', { valueAsNumber: true })} />
                   {errors.questionCount && <p className="text-red-500 text-sm">{errors.questionCount.message}</p>}
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-base font-semibold">Số lần làm bài tối đa</Label>
+                  <Input type="number" className="h-12 text-lg" {...register('allowedAttempts', { valueAsNumber: true })} />
+                  {errors.allowedAttempts && <p className="text-red-500 text-sm">{errors.allowedAttempts.message}</p>}
                 </div>
                 <div className="space-y-2">
                   <Label className="text-base font-semibold">Cách nhập đáp án</Label>
@@ -309,7 +422,16 @@ export default function TeacherDashboard() {
                     <Input value={answerString} onChange={(e) => setAnswerString(e.target.value)} placeholder="VD: 1A2B3C..." className="h-12 text-lg" />
                   </div>
                 )}
-                <Button type="submit" className="h-12 px-8 text-lg font-bold bg-navy hover:bg-navy/90 transition-all hover:scale-[1.02]">Lưu đề thi</Button>
+                <div className="flex gap-4">
+                  <Button type="submit" className="h-12 px-8 text-lg font-bold bg-navy hover:bg-navy/90 transition-all hover:scale-[1.02]">
+                    {editingExamId ? 'Cập nhật đề thi' : 'Lưu đề thi'}
+                  </Button>
+                  {editingExamId && (
+                    <Button type="button" variant="outline" onClick={handleCancelEdit} className="h-12 px-8 text-lg font-bold">
+                      Hủy sửa
+                    </Button>
+                  )}
+                </div>
               </form>
             </CardContent>
           </Card>
@@ -326,20 +448,15 @@ export default function TeacherDashboard() {
                       <p className="text-sm text-slate-500">Thời gian: {exam.duration} phút - {exam.questionCount} câu</p>
                     </div>
                     <div className="flex gap-2">
-                      <Button variant="outline">Sửa</Button>
+                      <Button variant="outline" onClick={() => handleEditExam(exam)}>Sửa</Button>
                       <Button variant="destructive" onClick={() => handleDeleteExam(exam.id)}>Xóa</Button>
                       <Button variant="outline" onClick={() => window.open(`/preview-exam/${exam.id}`, '_blank')}>Xem trước</Button>
+                      <Button variant="default" className="bg-amber hover:bg-amber/90 text-navy font-bold" onClick={() => navigate(`/thi-online/stats/${exam.id}`)}>Thống kê</Button>
                     </div>
                   </div>
                 ))}
               </div>
             </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="stats">
-          <Card className="shadow-lg border-slate-100">
-            <CardHeader><CardTitle className="text-2xl font-bold">Thống kê kết quả</CardTitle></CardHeader>
-            <CardContent>Thống kê học sinh làm bài.</CardContent>
           </Card>
         </TabsContent>
         <TabsContent value="accounts">

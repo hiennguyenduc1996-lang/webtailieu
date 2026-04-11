@@ -10,6 +10,7 @@ import OnlineExamPage from '@/src/pages/OnlineExamPage';
 import TeacherDashboard from '@/src/pages/TeacherDashboard';
 import StudentDashboard from '@/src/pages/StudentDashboard';
 import PreviewExamPage from '@/src/pages/PreviewExamPage';
+import ExamStatsPage from '@/src/pages/ExamStatsPage';
 import { Toaster } from '@/components/ui/sonner';
 import { ErrorBoundary } from '@/src/components/common/ErrorBoundary';
 
@@ -29,6 +30,7 @@ export default function App() {
               <Route path="/thi-online" element={<OnlineExamPage />} />
               <Route path="/thi-online/teacher" element={<TeacherDashboard />} />
               <Route path="/thi-online/student" element={<StudentDashboard />} />
+              <Route path="/thi-online/stats/:examId" element={<ExamStatsPage />} />
               <Route path="/preview-exam/:examId" element={<PreviewExamPage />} />
               <Route path="/document/:id" element={<DocumentDetailPage />} />
             </Routes>
