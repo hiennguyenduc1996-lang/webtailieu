@@ -32,8 +32,23 @@ export default function PreviewExamPage() {
   const [violationCount, setViolationCount] = useState(0);
   const [isExamStarted, setIsExamStarted] = useState(false);
   const [showViolationModal, setShowViolationModal] = useState(false);
+  const [countdown, setCountdown] = useState(5);
   
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (showViolationModal && countdown > 0) {
+      interval = setInterval(() => {
+        setCountdown(prev => prev - 1);
+      }, 1000);
+    } else if (showViolationModal && countdown === 0) {
+      setShowViolationModal(false);
+      handleSubmit(); // Automatically submit
+      toast.error('Hết thời gian quay lại! Đề thi đã tự động nộp.');
+    }
+    return () => clearInterval(interval);
+  }, [showViolationModal, countdown]);
 
   useEffect(() => {
     const fetchExamAndCheckAttempts = async () => {
@@ -124,6 +139,7 @@ export default function PreviewExamPage() {
 
   const handleViolation = () => {
     setShowViolationModal(true);
+    setCountdown(5);
   };
 
   const confirmReturn = () => {
@@ -254,9 +270,9 @@ export default function PreviewExamPage() {
         <div className="bg-white p-8 rounded-3xl text-center shadow-2xl max-w-md">
           <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-navy mb-2">CẢNH BÁO VI PHẠM</h2>
-          <p className="text-slate-600 mb-6">Bạn đã thoát khỏi màn hình làm bài. Hành động này bị nghiêm cấm. Bạn đã vi phạm lần thứ {violationCount + 1}.</p>
+          <p className="text-slate-600 mb-6">Bạn đã thoát khỏi màn hình làm bài. Hành động này bị nghiêm cấm. Bạn đã vi phạm lần thứ {violationCount + 1}. Tự động nộp bài sau {countdown} giây.</p>
           <Button onClick={confirmReturn} className="bg-navy text-white font-bold px-8 py-3 rounded-2xl w-full">
-            TÔI ĐÃ HIỂU, QUAY LẠI LÀM BÀI
+            TÔI ĐÃ HIỂU, QUAY LẠI LÀM BÀI ({countdown}s)
           </Button>
         </div>
       </div>
