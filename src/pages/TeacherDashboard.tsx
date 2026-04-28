@@ -25,6 +25,7 @@ const examSchema = z.object({
   questionCount: z.number().min(1, 'Số câu hỏi phải lớn hơn 0'),
   allowedAttempts: z.number().min(1, 'Số lần làm bài tối thiểu là 1'),
   resultDisplayMode: z.enum(['ALL', 'SCORE', 'HIDE']),
+  subject: z.enum(['ENGLISH', 'SCIENCE', 'MATH']),
 });
 
 const studentSchema = z.object({
@@ -45,6 +46,7 @@ interface Exam {
   questionCount: number;
   allowedAttempts: number;
   resultDisplayMode: 'ALL' | 'SCORE' | 'HIDE';
+  subject: 'ENGLISH' | 'SCIENCE' | 'MATH';
 }
 
 interface StudentAccount {
@@ -62,6 +64,7 @@ interface ExamFormValues {
   questionCount: number;
   allowedAttempts: number;
   resultDisplayMode: 'ALL' | 'SCORE' | 'HIDE';
+  subject: 'ENGLISH' | 'SCIENCE' | 'MATH';
 }
 
 interface ExamResult {
@@ -92,6 +95,7 @@ export default function TeacherDashboard() {
       questionCount: 40,
       allowedAttempts: 1,
       resultDisplayMode: 'ALL',
+      subject: 'ENGLISH',
     },
   });
 
@@ -107,7 +111,7 @@ export default function TeacherDashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'name'>('newest');
   const questionCount = watch('questionCount');
-  const [answers, setAnswers] = useState<string[]>(() => Array(40).fill('A'));
+  const [answers, setAnswers] = useState<string[]>(() => Array(40).fill(''));
   const [answerInputType, setAnswerInputType] = useState<'select' | 'string'>('select');
   const [answerString, setAnswerString] = useState('');
   const [isStudentDialogOpen, setIsStudentDialogOpen] = useState(false);
@@ -456,18 +460,18 @@ export default function TeacherDashboard() {
                   {errors.allowedAttempts && <p className="text-red-500 text-sm">{errors.allowedAttempts.message}</p>}
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-base font-bold uppercase">CHẾ ĐỘ HIỂN THỊ KẾT QUẢ SAU KHI NỘP</Label>
+                  <Label className="text-base font-bold uppercase">MÔN HỌC</Label>
                   <Select 
-                    value={watch('resultDisplayMode')} 
-                    onValueChange={(v) => setValue('resultDisplayMode', v as any)}
+                    value={watch('subject')} 
+                    onValueChange={(v) => setValue('subject', v as any)}
                   >
                     <SelectTrigger className="h-12 text-lg font-bold uppercase border-2 border-slate-200 rounded-xl bg-white">
-                      <SelectValue placeholder="CHỌN CHẾ ĐỘ HIỂN THỊ" />
+                      <SelectValue placeholder="CHỌN MÔN HỌC" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ALL" className="font-bold uppercase">ĐÚNG, ĐIỂM, CÂU SAI</SelectItem>
-                      <SelectItem value="SCORE" className="font-bold uppercase">ĐÚNG, ĐIỂM (ẨN CÂU SAI)</SelectItem>
-                      <SelectItem value="HIDE" className="font-bold uppercase">KHÔNG HIỂN THỊ GÌ</SelectItem>
+                      <SelectItem value="ENGLISH" className="font-bold uppercase">TIẾNG ANH</SelectItem>
+                      <SelectItem value="SCIENCE" className="font-bold uppercase">VẬT LÍ - HÓA - SINH</SelectItem>
+                      <SelectItem value="MATH" className="font-bold uppercase">TOÁN HỌC</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -487,42 +491,126 @@ export default function TeacherDashboard() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-base font-bold uppercase">CÁCH NHẬP ĐÁP ÁN</Label>
-                  <Select value={answerInputType} onValueChange={(v: any) => setAnswerInputType(v)}>
-                    <SelectTrigger className="w-full h-12 text-lg border-2 border-slate-200">
-                      <SelectValue placeholder="CHỌN CÁCH NHẬP" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="select">CHỌN TỪNG CÂU</SelectItem>
-                      <SelectItem value="string">NHẬP CHUỖI (VD: 1A2B3C)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                {answerInputType === 'select' ? (
-                  <div className="space-y-2">
-                    <Label className="text-base font-bold uppercase">ĐÁP ÁN ({questionCount} CÂU)</Label>
-                    <div className="grid grid-cols-5 gap-2">
-                      {answers.map((answer, index) => (
-                        <div key={index} className="flex items-center gap-1">
-                          <span className="text-sm font-bold w-6">{index + 1}.</span>
-                          <Select value={answer} onValueChange={(val) => handleAnswerChange(index, val)}>
-                            <SelectTrigger className="w-16 h-10 font-bold border-2 border-slate-200"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="A">A</SelectItem><SelectItem value="B">B</SelectItem>
-                              <SelectItem value="C">C</SelectItem><SelectItem value="D">D</SelectItem>
-                            </SelectContent>
-                          </Select>
+                <div className="space-y-4">
+                  <Label className="text-lg font-black uppercase">CẤU TRÚC VÀ ĐÁP ÁN</Label>
+                  <Tabs value={watch('subject')} onValueChange={(v) => setValue('subject', v as any)} className="w-full">
+                    <TabsList className="grid w-full grid-cols-3 h-12">
+                      <TabsTrigger value="ENGLISH">TIẾNG ANH</TabsTrigger>
+                      <TabsTrigger value="SCIENCE">VẬT LÍ - HÓA - SINH</TabsTrigger>
+                      <TabsTrigger value="MATH">TOÁN HỌC</TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="ENGLISH" className="space-y-4 pt-4">
+                       <p className="text-sm text-slate-500">40 câu Trắc nghiệm (Chọn A, B, C, D)</p>
+                       <div className="grid grid-cols-5 gap-2">
+                        {answers.slice(0, 40).map((answer, index) => (
+                          <div key={index} className="flex items-center gap-1">
+                            <span className="text-sm font-bold w-6">{index + 1}.</span>
+                            <Select value={answer || ''} onValueChange={(val) => handleAnswerChange(index, val)}>
+                              <SelectTrigger className="w-20 h-10 font-bold border-2 border-slate-200"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="A">A</SelectItem><SelectItem value="B">B</SelectItem>
+                                <SelectItem value="C">C</SelectItem><SelectItem value="D">D</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        ))}
+                      </div>
+                    </TabsContent>
+                    
+                    <TabsContent value="SCIENCE" className="space-y-4 pt-4">
+                      <h4 className="font-bold text-navy">PHẦN 1: 18 TRẮC NGHIỆM</h4>
+                      {Array.from({length: 2}).map((_, rowIndex) => (
+                        <div key={rowIndex} className="grid grid-cols-9 gap-2">
+                          {Array.from({length: 9}).map((_, colIndex) => {
+                            const idx = rowIndex * 9 + colIndex;
+                            return (
+                              <div key={idx} className="flex items-center gap-1">
+                                <span className="text-xs font-bold w-5 text-slate-500">{idx + 1}.</span>
+                                <Select value={answers[idx] || ''} onValueChange={(val) => handleAnswerChange(idx, val)}>
+                                  <SelectTrigger className="w-16 h-8 font-bold border-2 border-slate-200"><SelectValue /></SelectTrigger>
+                                  <SelectContent><SelectItem value="A">A</SelectItem><SelectItem value="B">B</SelectItem><SelectItem value="C">C</SelectItem><SelectItem value="D">D</SelectItem></SelectContent>
+                                </Select>
+                              </div>
+                            )
+                          })}
                         </div>
                       ))}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <Label className="text-base font-bold uppercase">CHUỖI ĐÁP ÁN</Label>
-                    <Input value={answerString} onChange={(e) => setAnswerString(e.target.value)} placeholder="VD: 1A2B3C..." className="h-12 text-lg" />
-                  </div>
-                )}
+                      
+                      <h4 className="font-bold text-navy pt-4">PHẦN 2: 4 NHÓM CÂU ĐÚNG/SAI</h4>
+                      {Array.from({length: 4}).map((_, groupIndex) => (
+                        <div key={groupIndex} className="flex items-center gap-4 py-2 border-b">
+                          <span className="font-bold w-12 text-sm">Câu {19 + groupIndex}:</span>
+                          {Array.from({length: 4}).map((_, itemIndex) => {
+                            const idx = 18 + groupIndex * 4 + itemIndex;
+                            return (
+                                <Select key={idx} value={answers[idx] || ''} onValueChange={(val) => handleAnswerChange(idx, val)}>
+                                  <SelectTrigger className="w-24 h-8 font-bold border-2 border-slate-200 shrink-0"><SelectValue /></SelectTrigger>
+                                  <SelectContent><SelectItem value="T">Đúng</SelectItem><SelectItem value="F">Sai</SelectItem></SelectContent>
+                                </Select>
+                            )
+                          })}
+                        </div>
+                      ))}
+
+                      <h4 className="font-bold text-navy pt-4">PHẦN 3: 6 TỰ LUẬN NGẮN (ĐIỀN SỐ)</h4>
+                      {Array.from({length: 6}).map((_, index) => {
+                        const idx = 34 + index;
+                        return (
+                          <div key={idx} className="flex items-center gap-4">
+                            <Label className="w-20 font-bold">Câu {35 + index}:</Label>
+                            <Input value={answers[idx] || ''} onChange={(e) => handleAnswerChange(idx, e.target.value)} placeholder="Nhập đáp án (vd: 12.5)" className="h-10" />
+                          </div>
+                      )})}
+                    </TabsContent>
+                    
+                    <TabsContent value="MATH" className="space-y-4 pt-4">
+                      <h4 className="font-bold text-navy">PHẦN 1: 12 TRẮC NGHIỆM</h4>
+                      {Array.from({length: 2}).map((_, rowIndex) => (
+                        <div key={rowIndex} className="grid grid-cols-6 gap-2">
+                          {Array.from({length: 6}).map((_, colIndex) => {
+                            const idx = rowIndex * 6 + colIndex;
+                            return (
+                              <div key={idx} className="flex items-center gap-1">
+                                <span className="text-xs font-bold w-5 text-slate-500">{idx + 1}.</span>
+                                <Select value={answers[idx] || ''} onValueChange={(val) => handleAnswerChange(idx, val)}>
+                                  <SelectTrigger className="w-16 h-8 font-bold border-2 border-slate-200"><SelectValue /></SelectTrigger>
+                                  <SelectContent><SelectItem value="A">A</SelectItem><SelectItem value="B">B</SelectItem><SelectItem value="C">C</SelectItem><SelectItem value="D">D</SelectItem></SelectContent>
+                                </Select>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      ))}
+
+                      <h4 className="font-bold text-navy pt-4">PHẦN 2: 4 NHÓM CÂU ĐÚNG/SAI</h4>
+                      {Array.from({length: 4}).map((_, groupIndex) => (
+                        <div key={groupIndex} className="flex items-center gap-4 py-2 border-b">
+                          <span className="font-bold w-12 text-sm">Câu {13 + groupIndex}:</span>
+                          {Array.from({length: 4}).map((_, itemIndex) => {
+                            const idx = 12 + groupIndex * 4 + itemIndex;
+                            return (
+                                <Select key={idx} value={answers[idx] || ''} onValueChange={(val) => handleAnswerChange(idx, val)}>
+                                  <SelectTrigger className="w-24 h-8 font-bold border-2 border-slate-200 shrink-0"><SelectValue /></SelectTrigger>
+                                  <SelectContent><SelectItem value="T">Đúng</SelectItem><SelectItem value="F">Sai</SelectItem></SelectContent>
+                                </Select>
+                            )
+                          })}
+                        </div>
+                      ))}
+
+                      <h4 className="font-bold text-navy pt-4">PHẦN 3: 6 TỰ LUẬN NGẮN (ĐIỀN SỐ)</h4>
+                      {Array.from({length: 6}).map((_, index) => {
+                        const idx = 28 + index;
+                        return (
+                          <div key={idx} className="flex items-center gap-4">
+                            <Label className="w-20 font-bold">Câu {29 + index}:</Label>
+                            <Input value={answers[idx] || ''} onChange={(e) => handleAnswerChange(idx, e.target.value)} placeholder="Nhập đáp án (vd: 12.5)" className="h-10" />
+                          </div>
+                      )})}
+                    </TabsContent>
+                  </Tabs>
+                </div>
                 <div className="flex gap-4">
                   <Button type="submit" className="h-12 px-8 text-lg font-bold bg-navy hover:bg-navy/90 transition-all hover:scale-[1.02]">
                     {editingExamId ? 'Cập nhật đề thi' : 'Lưu đề thi'}
