@@ -446,7 +446,7 @@ export default function TeacherDashboard() {
                 </div>
                 <div className="space-y-2">
                   <Label className="text-base font-bold uppercase">THỜI GIAN</Label>
-                  <Input type="number" className="h-12 text-lg font-bold" {...register('duration')} />
+                  <Input type="number" className="h-12 text-lg font-bold" {...register('duration', { valueAsNumber: true })} />
                   {errors.duration && <p className="text-red-500 text-sm">{errors.duration.message}</p>}
                 </div>
                 <div className="space-y-2">
