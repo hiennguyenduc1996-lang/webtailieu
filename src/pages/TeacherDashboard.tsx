@@ -17,6 +17,7 @@ import { useAuth } from '@/src/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Download, Trash2, UserPlus, FileUp } from 'lucide-react';
+import { calculateScore } from '@/src/lib/scoring';
 
 const examSchema = z.object({
   title: z.string().min(1, 'Tiêu đề là bắt buộc'),
@@ -165,7 +166,6 @@ export default function TeacherDashboard() {
   async function onSubmit(values: ExamFormValues) {
     let finalAnswers = answers;
     if (answerInputType === 'string') {
-      // Parse string like 1A2B3C or ABC
       const parsed = answerString.match(/[ABCD]/gi);
       if (parsed && parsed.length === values.questionCount) {
         finalAnswers = parsed.map(a => a.toUpperCase());
@@ -181,6 +181,17 @@ export default function TeacherDashboard() {
           ...values,
           answers: finalAnswers,
         });
+
+        // Recalculate scores for all submissions of this exam
+        const examResultsToUpdate = results.filter(r => r.examId === editingExamId);
+        for (const res of examResultsToUpdate) {
+            const { score, correctCount } = calculateScore({ id: editingExamId, answers: finalAnswers, subject: values.subject }, res.studentAnswers);
+            await updateDoc(doc(db, 'examResults', res.id), {
+                score,
+                correctCount
+            });
+        }
+        
         toast.success('Đã cập nhật đề thi thành công');
         setEditingExamId(null);
       } else {
