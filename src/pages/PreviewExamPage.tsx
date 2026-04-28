@@ -31,6 +31,7 @@ export default function PreviewExamPage() {
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [violationCount, setViolationCount] = useState(0);
   const [isExamStarted, setIsExamStarted] = useState(false);
+  const [showViolationModal, setShowViolationModal] = useState(false);
   
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -122,6 +123,11 @@ export default function PreviewExamPage() {
   }, [hasSubmitted, isExamStarted, violationCount]);
 
   const handleViolation = () => {
+    setShowViolationModal(true);
+  };
+
+  const confirmReturn = () => {
+    setShowViolationModal(false);
     const newCount = violationCount + 1;
     setViolationCount(newCount);
     setTabSwitchCount(prev => prev + 1);
@@ -133,10 +139,8 @@ export default function PreviewExamPage() {
       toast.warning(`Cảnh báo vi phạm (${newCount}/3): Đừng thoát khỏi màn hình làm bài!`, {
         icon: <AlertTriangle className="text-amber" />
       });
-      // Attempt to re-enter fullscreen with a slight delay
-      setTimeout(() => {
-        document.documentElement.requestFullscreen().catch(err => console.error("Fullscreen re-entry error:", err));
-      }, 500);
+      // Attempt to re-enter fullscreen
+      document.documentElement.requestFullscreen().catch(err => console.error("Fullscreen re-entry error:", err));
     }
   };
 
@@ -244,6 +248,20 @@ export default function PreviewExamPage() {
   const answeredCount = studentAnswers.filter(a => a !== '').length;
 
   return (
+    <>
+    {showViolationModal && (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm">
+        <div className="bg-white p-8 rounded-3xl text-center shadow-2xl max-w-md">
+          <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-navy mb-2">CẢNH BÁO VI PHẠM</h2>
+          <p className="text-slate-600 mb-6">Bạn đã thoát khỏi màn hình làm bài. Hành động này bị nghiêm cấm. Bạn đã vi phạm lần thứ {violationCount + 1}.</p>
+          <Button onClick={confirmReturn} className="bg-navy text-white font-bold px-8 py-3 rounded-2xl w-full">
+            TÔI ĐÃ HIỂU, QUAY LẠI LÀM BÀI
+          </Button>
+        </div>
+      </div>
+    )}
+    
     <div className="container mx-auto px-4 py-8 max-w-[1600px] font-sans">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-extrabold text-navy tracking-tight">{exam.title}</h1>
@@ -382,5 +400,6 @@ export default function PreviewExamPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }
