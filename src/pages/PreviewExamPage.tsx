@@ -424,53 +424,93 @@ export default function PreviewExamPage() {
             </CardHeader>
             
             <CardContent className="p-0 flex-1 overflow-y-auto bg-slate-50/50">
-              <div className="p-4 space-y-3">
-                {studentAnswers.map((answer, index) => (
-                  <div 
-                    key={index} 
-                    className="flex items-center justify-between bg-white p-3 rounded-2xl border-2 border-transparent shadow-sm hover:border-amber/30 hover:shadow-md transition-all duration-300 group/row"
-                  >
-                    <span className="font-extrabold text-navy text-base shrink-0 mr-2 group-hover/row:text-amber transition-colors">
-                      Câu {index + 1}.
-                    </span>
-                    <div className="flex gap-2 shrink-0">
-                      {['A', 'B', 'C', 'D'].map(option => {
-                        const isSelected = answer === option;
-                        const isCorrect = hasSubmitted && exam.answers[index] === option;
-                        const isWrong = hasSubmitted && isSelected && !isCorrect;
-                        
-                        let btnClass = "w-10 h-10 rounded-xl font-bold transition-all duration-200 text-base border-2 ";
-                        
-                        if (hasSubmitted) {
-                          const showColors = exam.resultDisplayMode === 'ALL';
-                          if (showColors) {
-                            if (isCorrect) btnClass += "bg-green-500 text-white border-green-600 shadow-green-200 shadow-lg";
-                            else if (isWrong) btnClass += "bg-red-500 text-white border-red-600 shadow-red-200 shadow-lg";
-                            else btnClass += "bg-slate-50 text-slate-300 border-slate-100";
-                          } else {
-                            if (isSelected) btnClass += "bg-navy text-white border-navy opacity-70";
-                            else btnClass += "bg-slate-50 text-slate-300 border-slate-100";
-                          }
-                        } else {
-                          if (isSelected) btnClass += "bg-navy text-white border-navy shadow-lg scale-110 z-10";
-                          else btnClass += "bg-white text-slate-500 border-slate-100 hover:border-amber hover:text-amber hover:bg-amber/5";
-                        }
-
-                        return (
-                          <Button 
+              <div className="p-4 space-y-6">
+                {exam.subject === 'ENGLISH' ? (
+                  studentAnswers.map((answer, index) => (
+                    <div key={index} className="flex items-center justify-between bg-white p-3 rounded-2xl border-2 border-transparent shadow-sm hover:border-amber/30 hover:shadow-md transition-all duration-300">
+                      <span className="font-extrabold text-navy text-base">Câu {index + 1}.</span>
+                      <div className="flex gap-2">
+                        {['A', 'B', 'C', 'D'].map(option => (
+                           <Button 
                             key={option} 
                             variant="ghost" 
-                            className={btnClass}
+                            className={`w-10 h-10 rounded-xl font-bold transition-all ${
+                              hasSubmitted 
+                                ? (exam.resultDisplayMode === 'ALL' && exam.answers[index] === option ? "bg-green-500 text-white" : (hasSubmitted && studentAnswers[index] === option && exam.answers[index] !== option ? "bg-red-500 text-white" : "bg-slate-50 text-slate-300"))
+                                : (studentAnswers[index] === option ? "bg-navy text-white" : "bg-white text-slate-500")
+                            }`}
                             onClick={() => handleAnswerSelect(index, option)}
                             disabled={hasSubmitted}
                           >
                             {option}
                           </Button>
-                        );
-                      })}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <>
+                    <h3 className="font-bold text-lg text-navy">PHẦN 1: TRẮC NGHIỆM</h3>
+                    {/* Part 1: MCQ (Science: 0-17, Math: 0-11) */}
+                    {(exam.subject === 'SCIENCE' ? studentAnswers.slice(0, 18) : studentAnswers.slice(0, 12)).map((answer, index) => (
+                       <div key={index} className="flex items-center justify-between bg-white p-3 rounded-2xl shadow-sm">
+                        <span className="font-extrabold text-navy">Câu {index + 1}.</span>
+                        <div className="flex gap-2">
+                          {['A', 'B', 'C', 'D'].map(option => (
+                            <Button key={option} variant="ghost" className={`w-10 h-10 rounded-xl font-bold ${
+                              hasSubmitted ? (exam.resultDisplayMode === 'ALL' && exam.answers[index] === option ? "bg-green-500 text-white" : (hasSubmitted && studentAnswers[index] === option && exam.answers[index] !== option ? "bg-red-500 text-white" : "bg-slate-50")) : (studentAnswers[index] === option ? "bg-navy text-white" : "bg-white")
+                            }`} onClick={() => handleAnswerSelect(index, option)} disabled={hasSubmitted}>{option}</Button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+
+                    <h3 className="font-bold text-lg text-navy pt-4">PHẦN 2: ĐÚNG / SAI</h3>
+                    {/* Part 2: TF Groups (4 groups of 4) */}
+                    {Array.from({ length: 4 }).map((_, groupIndex) => {
+                      const baseIndex = exam.subject === 'SCIENCE' ? 18 : 12;
+                      return (
+                        <div key={groupIndex} className="bg-white p-4 rounded-2xl shadow-sm space-y-2">
+                          <h4 className="font-bold text-navy">Câu hỏi {groupIndex + 1}</h4>
+                          {['a', 'b', 'c', 'd'].map((sub, subIndex) => {
+                            const idx = baseIndex + groupIndex * 4 + subIndex;
+                            return (
+                              <div key={sub} className="flex items-center justify-between">
+                                <span className="font-semibold">Ý {sub.toUpperCase()}</span>
+                                <div className="flex gap-2">
+                                  {['T', 'F'].map(option => (
+                                    <Button key={option} variant="ghost" className={`w-12 h-10 rounded-xl font-bold ${
+                                      hasSubmitted ? (exam.resultDisplayMode === 'ALL' && exam.answers[idx] === option ? "bg-green-500 text-white" : (hasSubmitted && studentAnswers[idx] === option && exam.answers[idx] !== option ? "bg-red-500 text-white" : "bg-slate-50")) : (studentAnswers[idx] === option ? "bg-navy text-white" : "bg-white")
+                                    }`} onClick={() => handleAnswerSelect(idx, option)} disabled={hasSubmitted}>{option}</Button>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+
+                    <h3 className="font-bold text-lg text-navy pt-4">PHẦN 3: TỰ LUẬN NGẮN</h3>
+                    {/* Part 3: Short Answer (Science: 34-39, Math: 28-33) */}
+                    {(exam.subject === 'SCIENCE' ? studentAnswers.slice(34, 40) : studentAnswers.slice(28, 34)).map((answer, subIndex) => {
+                      const idx = (exam.subject === 'SCIENCE' ? 34 : 28) + subIndex;
+                      return (
+                        <div key={idx} className="flex items-center justify-between bg-white p-3 rounded-2xl shadow-sm">
+                          <span className="font-extrabold text-navy">Câu {idx - (exam.subject === 'SCIENCE' ? 34 : 28) + 1}.</span>
+                          <input 
+                            type="text" 
+                            className="border-2 rounded-xl p-2 font-bold text-center w-24"
+                            value={answer}
+                            onChange={(e) => handleAnswerSelect(idx, e.target.value)}
+                            disabled={hasSubmitted}
+                            placeholder="Đáp án..."
+                          />
+                        </div>
+                      );
+                    })}
+                  </>
+                )}
               </div>
             </CardContent>
           </Card>
