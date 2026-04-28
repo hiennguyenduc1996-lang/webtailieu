@@ -472,6 +472,22 @@ export default function TeacherDashboard() {
                   </Select>
                 </div>
                 <div className="space-y-2">
+                  <Label className="text-base font-bold uppercase">CHẾ ĐỘ HIỂN THỊ KẾT QUẢ SAU KHI NỘP</Label>
+                  <Select 
+                    value={watch('resultDisplayMode')} 
+                    onValueChange={(v) => setValue('resultDisplayMode', v as any)}
+                  >
+                    <SelectTrigger className="h-12 text-lg font-bold uppercase border-2 border-slate-200 rounded-xl bg-white">
+                      <SelectValue placeholder="CHỌN CHẾ ĐỘ HIỂN THỊ" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL" className="font-bold uppercase">ĐÚNG, ĐIỂM, CÂU SAI</SelectItem>
+                      <SelectItem value="SCORE" className="font-bold uppercase">ĐÚNG, ĐIỂM (ẨN CÂU SAI)</SelectItem>
+                      <SelectItem value="HIDE" className="font-bold uppercase">KHÔNG HIỂN THỊ GÌ</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
                   <Label className="text-base font-bold uppercase">CÁCH NHẬP ĐÁP ÁN</Label>
                   <Select value={answerInputType} onValueChange={(v: any) => setAnswerInputType(v)}>
                     <SelectTrigger className="w-full h-12 text-lg border-2 border-slate-200">

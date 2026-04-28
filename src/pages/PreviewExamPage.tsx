@@ -29,6 +29,8 @@ export default function PreviewExamPage() {
   const [score, setScore] = useState<number | null>(null);
   const [tabSwitchCount, setTabSwitchCount] = useState(0);
   const [startedAt, setStartedAt] = useState<number | null>(null);
+  const [violationCount, setViolationCount] = useState(0);
+  const [isExamStarted, setIsExamStarted] = useState(false);
   
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -101,19 +103,42 @@ export default function PreviewExamPage() {
 
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.hidden && !hasSubmitted) {
-        setTabSwitchCount(prev => prev + 1);
-        toast.warning('Cảnh báo: Bạn vừa chuyển tab/thoát khỏi màn hình làm bài!', {
-          icon: <AlertTriangle className="text-amber" />
-        });
+      if (document.hidden && !hasSubmitted && isExamStarted) {
+        handleViolation();
+      }
+    };
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement && !hasSubmitted && isExamStarted) {
+        handleViolation();
+        // Try to re-enter
+        document.documentElement.requestFullscreen().catch(err => console.error(err));
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
-  }, [hasSubmitted]);
+  }, [hasSubmitted, isExamStarted]);
+
+  const handleViolation = () => {
+    const newCount = violationCount + 1;
+    setViolationCount(newCount);
+    setTabSwitchCount(prev => prev + 1);
+
+    if (newCount >= 3) {
+      toast.error('Bạn đã vi phạm 3 lần. Hệ thống tự động nộp bài!');
+      handleSubmit();
+    } else {
+      toast.warning(`Cảnh báo vi phạm (${newCount}/3): Đừng thoát khỏi màn hình làm bài!`, {
+        icon: <AlertTriangle className="text-amber" />
+      });
+      // Attempt to re-enter fullscreen
+      document.documentElement.requestFullscreen().catch(err => console.error(err));
+    }
+  };
 
   const handleAnswerSelect = (index: number, option: string) => {
     if (hasSubmitted) return;
@@ -196,7 +221,25 @@ export default function PreviewExamPage() {
     return url;
   };
 
+  const startExam = () => {
+    setIsExamStarted(true);
+    setStartedAt(Date.now());
+    document.documentElement.requestFullscreen().catch(err => toast.error('Không thể kích hoạt toàn màn hình.'));
+  };
+
   if (!exam) return <div className="flex justify-center items-center h-screen text-2xl font-bold text-navy">Đang tải đề thi...</div>;
+
+  if (!isExamStarted) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen bg-slate-100 gap-6">
+        <h1 className="text-4xl font-extrabold text-navy">{exam.title}</h1>
+        <p className="text-xl text-slate-600">Thời gian làm bài: {exam.duration} phút</p>
+        <Button onClick={startExam} className="bg-navy text-white hover:bg-navy/90 text-2xl font-bold px-12 py-8 rounded-3xl">
+          BẮT ĐẦU LÀM BÀI
+        </Button>
+      </div>
+    );
+  }
 
   const answeredCount = studentAnswers.filter(a => a !== '').length;
 
