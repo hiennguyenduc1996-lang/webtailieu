@@ -110,8 +110,6 @@ export default function PreviewExamPage() {
     const handleFullscreenChange = () => {
       if (!document.fullscreenElement && !hasSubmitted && isExamStarted) {
         handleViolation();
-        // Try to re-enter
-        document.documentElement.requestFullscreen().catch(err => console.error(err));
       }
     };
 
@@ -121,7 +119,7 @@ export default function PreviewExamPage() {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
-  }, [hasSubmitted, isExamStarted]);
+  }, [hasSubmitted, isExamStarted, violationCount]);
 
   const handleViolation = () => {
     const newCount = violationCount + 1;
@@ -135,8 +133,10 @@ export default function PreviewExamPage() {
       toast.warning(`Cảnh báo vi phạm (${newCount}/3): Đừng thoát khỏi màn hình làm bài!`, {
         icon: <AlertTriangle className="text-amber" />
       });
-      // Attempt to re-enter fullscreen
-      document.documentElement.requestFullscreen().catch(err => console.error(err));
+      // Attempt to re-enter fullscreen with a slight delay
+      setTimeout(() => {
+        document.documentElement.requestFullscreen().catch(err => console.error("Fullscreen re-entry error:", err));
+      }, 500);
     }
   };
 
