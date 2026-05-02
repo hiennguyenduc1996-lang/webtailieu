@@ -1,0 +1,137 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: documents
+    // Document ID: auto-generated
+    // Fields:
+    //   - title: string (required, 1-200 chars)
+    //   - driveLink: string (required, valid URL)
+    //   - thumbnailUrl: string (optional, valid URL)
+    //   - category: string (required, enum)
+    //   - createdAt: number (required)
+    //   - updatedAt: number (required)
+    //   - description: string (optional)
+    //
+    // Collection: users
+    // Document ID: userId
+    // Fields:
+    //   - uid: string (required)
+    //   - email: string (required)
+    //   - role: string (required, 'admin' | 'user')
+    //
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         request.auth.token.email == "hiennguyenduc1996@gmail.com");
+    }
+
+    function isApprovedUser() {
+      return isAuthenticated() && 
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'approved');
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidUrl(url) {
+      return url is string && (url == "" || url.matches("^https://.*") || url.matches("^http://.*") || url.matches("^data:image/.*"));
+    }
+
+    // Domain Validators
+    function isValidDocument(data) {
+      let allowedFields = ['title', 'driveLink', 'category', 'createdAt', 'updatedAt', 'thumbnailUrl', 'description', 'author'];
+      return data.keys().hasAll(['title', 'driveLink', 'category', 'createdAt', 'updatedAt']) &&
+             data.keys().hasOnly(allowedFields) &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
+             isValidUrl(data.driveLink) &&
+             data.category in ['latest', 'provincial', 'specialized', 'thematic', 'prediction', 'exam', 'placeholder'] &&
+             data.createdAt is number &&
+             data.updatedAt is number &&
+             (!('author' in data) || (data.author is string && data.author.size() <= 100)) &&
+             (!('thumbnailUrl' in data) || isValidUrl(data.thumbnailUrl)) &&
+             (!('description' in data) || (data.description is string && data.description.size() <= 1000));
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'role', 'status']) &&
+             data.uid == request.auth.uid &&
+             isValidEmail(data.email) &&
+             data.role in ['admin', 'user'] &&
+             data.status in ['pending', 'approved', 'rejected'];
+    }
+
+    function isValidComment(data) {
+      return data.keys().hasAll(['documentId', 'userId', 'userName', 'content', 'createdAt']) &&
+             data.userName is string && data.userName.size() > 0 && data.userName.size() <= 100 &&
+             data.content is string && (data.content.size() > 0 || 'imageUrl' in data) &&
+             data.content.size() <= 2000 &&
+             (!('imageUrl' in data) || isValidUrl(data.imageUrl));
+    }
+
+    // Rules
+    match /documents/{docId} {
+      allow read: if true; // Publicly readable
+      allow create: if isAdmin() && isValidDocument(request.resource.data);
+      allow update: if isAdmin() && isValidDocument(request.resource.data) && 
+                    request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == 'user' && request.resource.data.status == 'pending';
+      allow update: if isAdmin() || (isOwner(userId) && request.resource.data.role == resource.data.role && request.resource.data.status == resource.data.status);
+      allow delete: if isAdmin();
+    }
+
+    match /comments/{commentId} {
+      allow read: if true;
+      allow create: if isValidComment(request.resource.data);
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /exams/{examId} {
+      allow read: if true;
+      allow create, update, delete: if isAuthenticated();
+    }
+
+    match /examResults/{resultId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if isAuthenticated();
+    }
+
+    match /studentAccounts/{studentId} {
+      allow get: if true;
+      allow list: if true;
+      allow create, update, delete: if isAuthenticated();
+    }
+
+    match /examUnlocks/{unlockId} {
+      allow read: if true;
+      allow create, update, delete: if isAuthenticated();
+    }
+  }
+}

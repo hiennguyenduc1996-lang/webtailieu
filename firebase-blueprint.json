@@ -1,0 +1,119 @@
+{
+  "entities": {
+    "Document": {
+      "title": "Document",
+      "description": "A study document or exam paper",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "author": { "type": "string" },
+        "driveLink": { "type": "string" },
+        "thumbnailUrl": { "type": "string" },
+        "category": { "type": "string", "enum": ["latest", "provincial", "specialized", "thematic", "prediction", "exam", "placeholder"] },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" },
+        "description": { "type": "string" }
+      },
+      "required": ["title", "driveLink", "category", "createdAt", "updatedAt"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile data",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "fullName": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "user"] },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] }
+      },
+      "required": ["uid", "email", "role", "status"]
+    },
+    "Comment": {
+      "title": "Comment",
+      "description": "User comment on a document",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "documentId": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "content": { "type": "string" },
+        "imageUrl": { "type": "string", "description": "Optional image URL or base64 image data attached to the comment" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["documentId", "userId", "userName", "content", "createdAt"]
+    },
+    "Exam": {
+      "title": "Exam",
+      "description": "An online exam",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "pdfUrl": { "type": "string" },
+        "duration": { "type": "number" },
+        "questions": { "type": "array" },
+        "answers": { "type": "array", "description": "Array of correct answers" },
+        "isPublished": { "type": "boolean" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["title", "pdfUrl", "duration", "questions", "answers", "isPublished", "createdAt"]
+    },
+    "ExamResult": {
+      "title": "ExamResult",
+      "description": "Result of a student's exam",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "examId": { "type": "string" },
+        "studentId": { "type": "string" },
+        "score": { "type": "number" },
+        "timeTaken": { "type": "number" },
+        "tabSwitches": { "type": "number" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["examId", "studentId", "score", "timeTaken", "tabSwitches", "createdAt"]
+    },
+    "StudentAccount": {
+      "title": "StudentAccount",
+      "description": "Student account for online exams",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "username": { "type": "string" },
+        "password": { "type": "string" },
+        "fullName": { "type": "string" },
+        "class": { "type": "string" }
+      },
+      "required": ["username", "password", "fullName", "class"]
+    }
+  },
+  "firestore": {
+    "/documents/{docId}": {
+      "schema": "Document",
+      "description": "Collection of documents"
+    },
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Collection of user profiles"
+    },
+    "/comments/{commentId}": {
+      "schema": "Comment",
+      "description": "Collection of comments"
+    },
+    "/exams/{examId}": {
+      "schema": "Exam",
+      "description": "Collection of exams"
+    },
+    "/examResults/{resultId}": {
+      "schema": "ExamResult",
+      "description": "Collection of exam results"
+    },
+    "/studentAccounts/{studentId}": {
+      "schema": "StudentAccount",
+      "description": "Collection of student accounts"
+    }
+  }
+}
